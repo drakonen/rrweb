@@ -94,7 +94,11 @@
       <fieldset>
         <legend>Checkbox</legend>
         <label class="choice"
-          ><input id="checkbox" name="checkbox" type="checkbox" /> Enable sample
+        ><input id="checkbox" name="checkbox" type="checkbox" checked/> Pre-checked
+          option</label
+        >
+        <label class="choice"
+          ><input id="checkbox" name="checkbox" type="checkbox" /> un-checked
           option</label
         >
       </fieldset>
@@ -112,6 +116,12 @@
         <select id="select" name="selection">
           <option value="" disabled selected>Choose an option</option>
           <option value="1">First option</option>
+          <option value="2">Second option</option>
+        </select>
+        <label for="preselected">Pre-selected menu</label>
+        <select id="preselected" name="selection">
+          <option value="" disabled selected>Choose an option</option>
+          <option value="1" selected>First option</option>
           <option value="2">Second option</option>
         </select>
       </div>

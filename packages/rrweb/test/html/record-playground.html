@@ -235,15 +235,7 @@
             ><input id="input-last" type="checkbox" /> Record inputs only on
             change</label
           >
-          <p class="muted">
-            Unchecked records input events as you type. Checked waits for a
-            change event, usually when the field loses focus.
-          </p>
         </fieldset>
-        <label>
-          <input id="initial-checked" type="checkbox" checked />
-          Start with the checkbox checked
-        </label>
         <div class="toolbar">
           <button class="primary" id="apply">Apply &amp; restart</button>
         </div>
@@ -415,7 +407,6 @@ Waiting for a recording…</pre
         selected = -1;
         render();
         status('Loading form and recorder…');
-        const initiallyChecked = $('initial-checked').checked;
         frame.onload = () => {
           if (current !== generation) return;
           const doc = frame.contentDocument;
@@ -424,8 +415,6 @@ Waiting for a recording…</pre
             status('Could not load playground-form.html.', true);
             return;
           }
-          if (initiallyChecked) checkbox.setAttribute('checked', '');
-          else checkbox.removeAttribute('checked');
           const script = doc.createElement('script');
           script.src =
             new URL('../../dist/rrweb.umd.cjs', location.href).href +
