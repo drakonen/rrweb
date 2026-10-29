@@ -637,9 +637,15 @@ export type viewportResizeDimension = {
 
 export type viewportResizeCallback = (d: viewportResizeDimension) => void;
 
+export type InputKind = 'insert' | 'delete' | 'paste' | 'autofill';
+
 export type inputValue = {
   text: string;
   isChecked: boolean;
+  /** Constant empty/filled masking, emitted only on blur. */
+  masked?: boolean;
+  /** Unordered edit kinds for a focus visit, emitted only on blur. */
+  inputKinds?: InputKind[];
 
   // `userTriggered` indicates if this event was triggered directly by user (userTriggered: true)
   // or was triggered indirectly (userTriggered: false)

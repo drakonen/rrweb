@@ -80,7 +80,8 @@ function record<T = eventWithTime>(
     maskAllInputs,
     maskInputOptions: _maskInputOptions,
     slimDOMOptions: _slimDOMOptions,
-    maskInputFn,
+    maskInputFn: customMaskInputFn,
+    maskInputActivity = false,
     maskTextFn,
     hooks,
     packFn,
@@ -160,6 +161,10 @@ function record<T = eventWithTime>(
       : _maskInputOptions !== undefined
       ? _maskInputOptions
       : { password: true };
+
+  const maskInputFn = maskInputActivity
+    ? (value: string) => (value ? '********' : '')
+    : customMaskInputFn;
 
   const slimDOMOptions = slimDOMDefaults(_slimDOMOptions);
 
@@ -328,6 +333,7 @@ function record<T = eventWithTime>(
       dataURLOptions,
       maskTextFn,
       maskInputFn,
+      maskInputActivity,
       recordCanvas,
       inlineImages,
       sampling,
@@ -531,6 +537,7 @@ function record<T = eventWithTime>(
           collectFonts,
           doc,
           maskInputFn,
+          maskInputActivity,
           maskTextFn,
           keepIframeSrcFn,
           blockSelector,

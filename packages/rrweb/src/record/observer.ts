@@ -51,6 +51,7 @@ import type {
   customElementCallback,
 } from '@rrweb/types';
 import MutationBuffer from './mutation';
+import { InputActivity, getInputKind } from './input-activity';
 import { callbackWrapper } from './error-handler';
 import dom, { mutationObserverCtor } from '@rrweb/utils';
 
@@ -395,9 +396,33 @@ function initInputObserver({
   ignoreSelector,
   maskInputOptions,
   maskInputFn,
+  maskInputActivity,
   sampling,
   userTriggeredOnInput,
 }: observerParam): listenerHandler {
+  const activity = new InputActivity();
+  function activityTarget(
+    event: Event,
+  ): HTMLInputElement | HTMLTextAreaElement | null {
+    const target = getEventTarget(event) as
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | null;
+    if (!target || !['INPUT', 'TEXTAREA'].includes(target.tagName)) return null;
+    const type = getInputType(target) || '';
+    if (type === 'radio' || type === 'checkbox') return null;
+    if (
+      isBlocked(target, blockClass, blockSelector, true) ||
+      target.classList.contains(ignoreClass) ||
+      (ignoreSelector && target.matches(ignoreSelector))
+    )
+      return null;
+    return maskInputOptions[
+      target.tagName.toLowerCase() as keyof MaskInputOptions
+    ] || maskInputOptions[type as keyof MaskInputOptions]
+      ? target
+      : null;
+  }
   function eventHandler(event: Event) {
     let target = getEventTarget(event) as HTMLElement | null;
     const userTriggered = event.isTrusted;
@@ -425,6 +450,13 @@ function initInputObserver({
     ) {
       return;
     }
+    if (
+      maskInputActivity &&
+      sampling.input === 'last' &&
+      event.type === 'input' &&
+      !activityTarget(event)
+    )
+      return;
     let text = (target as HTMLInputElement).value;
     let isChecked = false;
     const type: Lowercase<string> = getInputType(target) || '';
@@ -443,6 +475,14 @@ function initInputObserver({
         value: text,
         maskInputFn,
       });
+    }
+    if (maskInputActivity && activityTarget(event)) {
+      activity.update(
+        target,
+        Boolean((target as HTMLInputElement).value),
+        getInputKind(event, target),
+      );
+      return;
     }
     cbWithDedup(
       target,
@@ -484,10 +524,46 @@ function initInputObserver({
       });
     }
   }
-  const events = sampling.input === 'last' ? ['change'] : ['input', 'change'];
+  const events =
+    !maskInputActivity && sampling.input === 'last'
+      ? ['change']
+      : ['input', 'change'];
   const handlers: Array<listenerHandler | hookResetter> = events.map(
     (eventName) => on(eventName, callbackWrapper(eventHandler), doc),
   );
+  if (maskInputActivity) {
+    handlers.push(
+      on(
+        'focusin',
+        callbackWrapper((event: Event) => {
+          const target = activityTarget(event);
+          if (target) activity.seed(target, Boolean(target.value), true);
+        }),
+        doc,
+      ),
+    );
+    handlers.push(
+      on(
+        'focusout',
+        callbackWrapper((event: Event) => {
+          const target = activityTarget(event);
+          if (!target) return;
+          activity.update(target, Boolean(target.value));
+          const value = activity.blur(target);
+          if (value)
+            callbackWrapper(inputCb)({ ...value, id: mirror.getId(target) });
+        }),
+        doc,
+      ),
+    );
+    const activeElement = doc.activeElement;
+    if (activeElement) {
+      const target = activityTarget({
+        target: activeElement,
+      } as unknown as Event);
+      if (target) activity.seed(target, Boolean(target.value), true);
+    }
+  }
   const currentWindow = doc.defaultView;
   if (!currentWindow) {
     return () => {

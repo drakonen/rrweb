@@ -57,6 +57,39 @@ rrwebBrowserClient.start({
 - `jsEntrypoint`: optional entrypoint label. Defaults to `programmatic` for direct `start()` calls and `script-tag` for script-tag autostart.
 - rrweb record options: other options are passed through to `record()` from rrweb, such as masking, blocking, sampling, and DOM capture options. See the [rrweb recording docs](https://rrweb.com/docs/packages/record/readme).
 
+### Masked Input Activity
+
+The browser client enables `maskInputActivity` by default unless you supply a
+custom `maskInputFn`. Masked text fields emit one input event on the next blur,
+with `text: '********'` for a filled field or `text: ''` for an empty field.
+Typing, deleting, pasting, and empty/filled transitions do not emit input events
+during the visit. There is no timeout; an unfinished visit has no input summary.
+Snapshots also use the constant placeholder, and masked `value` attribute
+mutations are suppressed until blur. Unmasked fields keep their normal behavior.
+
+The blur event has `masked: true` and `inputKinds`, a sorted set containing any of
+`insert`, `delete`, `paste`, and `autofill`. It contains no edit counts, order, or
+individual edit timestamps. Input types beginning with `delete` map to `delete`;
+paste and drop map to `paste`; other specified input types map to `insert`.
+Autofill pseudo-classes are checked where supported. An input event without an
+`inputType` is classified as `autofill` as a best-effort fallback, which can also
+include script-generated input. `insertReplacementText` alone is not treated as
+proof of autofill because it also covers autocorrect.
+
+Older replayers display the final fixed placeholder at blur. Newer replayers use
+the future blur summary in saved recordings to show generic dots during focus,
+adding one per second up to eight. Visits containing paste or autofill display
+eight dots immediately. These are illustrative animations, not actual edit times
+or lengths. Live replay displays the final state when the blur summary arrives;
+it cannot look ahead to animate an unfinished visit.
+
+Set `maskInputActivity: false` to use ordinary rrweb masking. In the core recorder,
+this option is opt-in. Explicitly enabling it overrides `maskInputFn` to keep
+snapshots and input events consistently masked. This limits input-value leakage;
+focus/blur timing, final empty/filled state, and other recorded page behavior
+remain visible. Textarea-specific presentation and paragraph masking are separate
+work.
+
 ### Stylesheet Capture
 
 `inlineStylesheet` is currently used for stylesheet capture compatibility. Once the `captureAssets` recording API lands from the assets branch, `captureAssets.stylesheets` should replace that compatibility path.

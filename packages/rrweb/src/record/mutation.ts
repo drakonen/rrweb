@@ -1,3 +1,4 @@
+import type { MaskInputOptions } from 'rrweb-snapshot';
 import {
   serializeNodeWithId,
   transformAttribute,
@@ -78,6 +79,7 @@ export default class MutationBuffer {
   private maskTextSelector: observerParam['maskTextSelector'];
   private inlineStylesheet: observerParam['inlineStylesheet'];
   private maskInputOptions: observerParam['maskInputOptions'];
+  private maskInputActivity: observerParam['maskInputActivity'];
   private maskTextFn: observerParam['maskTextFn'];
   private maskInputFn: observerParam['maskInputFn'];
   private keepIframeSrcFn: observerParam['keepIframeSrcFn'];
@@ -106,6 +108,7 @@ export default class MutationBuffer {
         'maskTextSelector',
         'inlineStylesheet',
         'maskInputOptions',
+        'maskInputActivity',
         'maskTextFn',
         'maskInputFn',
         'keepIframeSrcFn',
@@ -501,6 +504,12 @@ export default class MutationBuffer {
             value,
             maskInputFn: this.maskInputFn,
           });
+          if (
+            this.maskInputActivity &&
+            (this.maskInputOptions[tagNameLower as keyof MaskInputOptions] ||
+              (type && this.maskInputOptions[type as keyof MaskInputOptions]))
+          )
+            return;
         }
         if (
           isBlocked(m.target, this.blockClass, this.blockSelector, false) ||

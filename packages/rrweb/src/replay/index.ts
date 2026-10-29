@@ -30,6 +30,7 @@ import type {
 import * as mittProxy from 'mitt';
 import { polyfill as smoothscrollPolyfill } from './smoothscroll';
 import { Timer } from './timer';
+import { InputActivityReplay } from './input-activity';
 import {
   createPlayerService,
   createSpeedService,
@@ -178,6 +179,32 @@ export class Replayer {
 
   // Similar to the reason for constructedStyleMutations.
   private adoptedStyleSheets: adoptedStyleSheetData[] = [];
+  private inputActivity = new InputActivityReplay();
+  private inputActivityFrame: number | null = null;
+
+  private renderInputActivity = () => {
+    if (this.inputActivityFrame !== null)
+      cancelAnimationFrame(this.inputActivityFrame);
+    this.inputActivityFrame = null;
+    const { baselineTime, timer } = this.service.state.context;
+    this.inputActivity.render(baselineTime + timer.timeOffset, (id, value) => {
+      const target = this.mirror.getNode(id) as HTMLInputElement | null;
+      if (target && target.value !== value) {
+        try {
+          target.value = value;
+        } catch {
+          /* Unsupported input type. */
+        }
+      }
+    });
+    if (
+      this.inputActivity.needsAnimation(baselineTime + timer.timeOffset) &&
+      (this.service.state.matches('playing') ||
+        this.service.state.matches('live'))
+    ) {
+      this.inputActivityFrame = requestAnimationFrame(this.renderInputActivity);
+    }
+  };
 
   constructor(
     events: Array<eventWithTime | string>,
@@ -336,6 +363,7 @@ export class Replayer {
     });
     this.emitter.on(ReplayerEvents.PlayBack, () => {
       this.firstFullSnapshot = null;
+      this.inputActivity.reset();
       this.mirror.reset();
       this.styleMirror.reset();
       this.mediaManager.reset();
@@ -367,6 +395,7 @@ export class Replayer {
     );
     this.service.start();
     this.service.subscribe((state) => {
+      this.renderInputActivity();
       this.emitter.emit(ReplayerEvents.StateChange, {
         player: state,
       });
@@ -558,6 +587,9 @@ export class Replayer {
    */
   public destroy() {
     this.pause();
+    if (this.inputActivityFrame !== null)
+      cancelAnimationFrame(this.inputActivityFrame);
+    this.inputActivity.reset();
     this.mirror.reset();
     this.styleMirror.reset();
     this.mediaManager.reset();
@@ -709,6 +741,10 @@ export class Replayer {
           }
           this.mediaManager.reset();
           this.styleMirror.reset();
+          this.inputActivity.restore(
+            event.timestamp,
+            this.service.state.context.events,
+          );
           this.rebuildFullSnapshot(event, isSync);
           this.iframe.contentWindow?.scrollTo(event.data.initialOffset);
         };
@@ -1124,6 +1160,16 @@ export class Replayer {
     isSync: boolean,
   ) {
     const { data: d } = e;
+    if (d.source === IncrementalSource.Input) this.inputActivity.input(d);
+    if (d.source === IncrementalSource.MouseInteraction) {
+      if (d.type === MouseInteractions.Focus)
+        this.inputActivity.focus(
+          d.id,
+          e.timestamp,
+          this.inputActivity.summaryFor(e, this.service.state.context.events),
+        );
+      if (d.type === MouseInteractions.Blur) this.inputActivity.blur(d.id);
+    }
     switch (d.source) {
       case IncrementalSource.Mutation: {
         try {
@@ -1939,7 +1985,12 @@ export class Replayer {
     }
     try {
       (target as HTMLInputElement).checked = d.isChecked;
-      (target as HTMLInputElement).value = d.text;
+      (target as HTMLInputElement).value = d.masked
+        ? this.inputActivity.value(
+            d.id,
+            this.service.state.context.baselineTime + this.timer.timeOffset,
+          ) ?? d.text
+        : d.text;
     } catch (error) {
       // for safe
     }

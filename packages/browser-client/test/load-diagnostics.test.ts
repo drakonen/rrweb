@@ -185,6 +185,24 @@ afterEach(() => {
 });
 
 describe('@rrweb/browser-client load diagnostics', () => {
+  it('defaults to blur-only masked activity while preserving custom mask functions and opt-outs', async () => {
+    const client = await importFreshClient();
+    const options = { publicApiKey: 'test-key', emit: () => undefined };
+    client.start(options);
+    expect(mockState.lastRecordOptions?.maskInputActivity).toBe(true);
+    client.stop(false);
+
+    const maskInputFn = () => '[hidden]';
+    client.start({ ...options, maskInputFn });
+    expect(mockState.lastRecordOptions?.maskInputActivity).toBe(false);
+    expect(mockState.lastRecordOptions?.maskInputFn).toBe(maskInputFn);
+    client.stop(false);
+
+    client.start({ ...options, maskInputActivity: false });
+    expect(mockState.lastRecordOptions?.maskInputActivity).toBe(false);
+    client.stop(false);
+  });
+
   it('emits annotations immediately while recording', async () => {
     const client = await importFreshClient();
     const annotation = { type: 'caption', text: 'Save the project' } as const;

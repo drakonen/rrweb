@@ -54,6 +54,8 @@ export type recordOptions<T> = {
   maskAllInputs?: boolean;
   maskInputOptions?: MaskInputOptions;
   maskInputFn?: MaskInputFn;
+  /** Record masked field state and coarse edit kinds only on blur. */
+  maskInputActivity?: boolean;
   maskTextFn?: MaskTextFn;
   slimDOMOptions?: SlimDOMOptions | 'all' | true;
   ignoreCSSAttributes?: Set<string>;
@@ -101,6 +103,8 @@ export type observerParam = {
   maskTextSelector: string | null;
   maskInputOptions: MaskInputOptions;
   maskInputFn?: MaskInputFn;
+  /** Record masked field state and coarse edit kinds only on blur. */
+  maskInputActivity?: boolean;
   maskTextFn?: MaskTextFn;
   keepIframeSrcFn: KeepIframeSrcFn;
   inlineStylesheet: boolean;
@@ -147,6 +151,7 @@ export type MutationBufferParam = Pick<
   | 'maskInputOptions'
   | 'maskTextFn'
   | 'maskInputFn'
+  | 'maskInputActivity'
   | 'keepIframeSrcFn'
   | 'recordCanvas'
   | 'inlineImages'
