@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>rrweb capture playground</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #f4f6f8;
+        color: #182636;
+        font: 14px system-ui, sans-serif;
+      }
+      h2 {
+        margin: 0 0 14px;
+        font-size: 17px;
+      }
+      p {
+        line-height: 1.5;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(280px, 1fr) minmax(400px, 2fr);
+        gap: 18px;
+      }
+      section {
+        background: white;
+        border: 1px solid #d6dde5;
+        border-radius: 10px;
+        padding: 18px;
+        min-width: 0;
+      }
+      .wide {
+        grid-column: 1 / -1;
+      }
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 12px 0;
+      }
+      button,
+      select {
+        padding: 8px 11px;
+        border: 1px solid #aebac7;
+        border-radius: 5px;
+        background: white;
+        color: inherit;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #185dba;
+        color: white;
+        border-color: #185dba;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.5;
+      }
+      :focus-visible {
+        outline: 3px solid #80b4fa;
+        outline-offset: 2px;
+      }
+      fieldset {
+        margin: 0 0 20px;
+        padding: 0;
+        border: 0;
+        min-width: 0;
+      }
+      legend {
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+      .option {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        margin: 8px 0;
+      }
+      .option input {
+        margin: 0;
+        accent-color: #185dba;
+      }
+      .nested {
+        margin: 8px 0 12px 8px;
+        padding-left: 16px;
+        border-left: 2px solid #e4e9ee;
+      }
+      .option-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 12px;
+      }
+      summary {
+        cursor: pointer;
+        color: #536477;
+        margin: 12px 0;
+      }
+      .iframe-shell {
+        overflow: hidden;
+        border: 1px solid #aebac7;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px #18263612;
+      }
+      .iframe-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        background: #edf1f5;
+        border-bottom: 1px solid #cbd5df;
+        color: #536477;
+        font-size: 12px;
+      }
+      .iframe-header span {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .iframe-header a {
+        color: #185dba;
+        font-family: monospace;
+      }
+      iframe {
+        display: block;
+        width: 100%;
+        height: 470px;
+        border: 0;
+        background: white;
+      }
+      #status {
+        padding: 10px 0;
+        font-weight: 600;
+      }
+      #status.error {
+        color: #b42318;
+      }
+      .muted {
+        color: #536477;
+        font-size: 13px;
+      }
+      .events {
+        display: grid;
+        grid-template-columns: minmax(250px, 1fr) minmax(300px, 2fr);
+        gap: 14px;
+      }
+      #event-list {
+        height: 380px;
+        overflow: auto;
+        border: 1px solid #d6dde5;
+        border-radius: 5px;
+      }
+      #event-list button {
+        display: block;
+        width: 100%;
+        border: 0;
+        border-bottom: 1px solid #e4e9ee;
+        border-radius: 0;
+        text-align: left;
+        font: 12px/1.5 monospace;
+      }
+      #event-list button[aria-pressed='true'] {
+        background: #e5efff;
+      }
+      pre {
+        margin: 0;
+        padding: 14px;
+        height: 380px;
+        overflow: auto;
+        background: #142235;
+        color: #dce8f5;
+        border-radius: 5px;
+        font: 12px/1.5 monospace;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      @media (max-width: 800px) {
+        main,
+        .events {
+          grid-template-columns: 1fr;
+        }
+        .wide {
+          grid-column: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <h2>Recorder settings</h2>
+        <fieldset>
+          <legend>Masking</legend>
+          <label class="option" for="mask-length-strategy">
+            Mask length strategy
+            <select id="mask-length-strategy">
+              <option value="fixed">Fixed (one star per character)</option>
+              <option value="bucketed">Bucketed</option>
+            </select>
+          </label>
+          <label class="option"
+            ><input id="mask-all" type="checkbox" checked /> Mask all input
+            types</label
+          >
+          <div class="nested">
+            <div id="mask-form-types" class="option-grid"></div>
+            <details>
+              <summary>Other input types</summary>
+              <div id="mask-other-types" class="option-grid"></div>
+            </details>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Sampling</legend>
+          <label class="option"
+            ><input id="track-all" type="checkbox" checked /> Record mouse /
+            touch activity</label
+          >
+          <div class="nested">
+            <label class="option"
+              ><input id="track-move" type="checkbox" checked /> Movement and
+              dragging</label
+            >
+            <label class="option"
+              ><input id="track-interaction" type="checkbox" checked /> Clicks,
+              focus and other interactions</label
+            >
+          </div>
+          <label class="option"
+            ><input id="input-last" type="checkbox" /> Record inputs only on
+            change</label
+          >
+          <p class="muted">
+            Unchecked records input events as you type. Checked waits for a
+            change event, usually when the field loses focus.
+          </p>
+        </fieldset>
+        <label>
+          <input id="initial-checked" type="checkbox" checked />
+          Start with the checkbox checked
+        </label>
+        <div class="toolbar">
+          <button class="primary" id="apply">Apply &amp; restart</button>
+        </div>
+        <div id="status" role="status" aria-live="polite">Loading…</div>
+      </section>
+      <section>
+        <h2>Live form</h2>
+        <div class="iframe-shell">
+          <div class="iframe-header">
+            <span>Iframe</span>
+            <a href="playground-form.html" target="_blank" rel="noopener">
+              playground-form.html ↗
+            </a>
+          </div>
+          <iframe id="form" title="Form being recorded"></iframe>
+        </div>
+      </section>
+      <section class="wide">
+        <h2>Captured events</h2>
+        <div class="toolbar">
+          <label for="filter">Show</label>
+          <select id="filter">
+            <option value="relevant">Snapshots, mutations &amp; inputs</option>
+            <option value="all">All events</option>
+            <option value="input">Input events</option>
+            <option value="mutation">Mutations</option>
+          </select>
+          <span id="count">0 captured</span>
+        </div>
+        <p class="muted">
+          Filtering only changes this view. Select a row to inspect its raw
+          JSON. Masking suppresses checked-state input events; pointer events
+          can still be recorded.
+        </p>
+        <div class="events">
+          <div id="event-list" aria-label="Captured event list"></div>
+          <pre id="detail" tabindex="0" aria-label="Selected event JSON">
+Waiting for a recording…</pre
+          >
+        </div>
+      </section>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const frame = $('form');
+      const events = [];
+      let stopRecording;
+      let selected = -1;
+      let generation = 0;
+      let renderPending = false;
+      const names = [
+        'DOMContentLoaded',
+        'Load',
+        'Full snapshot',
+        'Incremental',
+        'Meta',
+        'Custom',
+        'Plugin',
+      ];
+      const sources = [
+        'Mutation',
+        'Mouse move',
+        'Mouse interaction',
+        'Scroll',
+        'Viewport resize',
+        'Input',
+        'Touch move',
+        'Media interaction',
+        'Style sheet rule',
+        'Canvas mutation',
+        'Font',
+        'Log',
+        'Drag',
+        'Style declaration',
+        'Selection',
+        'Adopted stylesheet',
+        'Custom element',
+      ];
+
+      function status(message, error = false) {
+        $('status').textContent = message;
+        $('status').classList.toggle('error', error);
+      }
+      function matches(event) {
+        const mode = $('filter').value;
+        const source = event.type === 3 ? event.data.source : -1;
+        return (
+          mode === 'all' ||
+          (mode === 'input' && source === 5) ||
+          (mode === 'mutation' && source === 0) ||
+          (mode === 'relevant' &&
+            (event.type === 2 || source === 0 || source === 5))
+        );
+      }
+      function render() {
+        renderPending = false;
+        const visible = events
+          .map((event, index) => ({ event, index }))
+          .filter(({ event }) => matches(event));
+        $(
+          'count',
+        ).textContent = `${events.length} captured · ${visible.length} matching`;
+        $('event-list').replaceChildren();
+        // Keep the rendered list limited to the latest 300 matching events.
+        for (const { event, index } of visible.slice(-300)) {
+          const button = document.createElement('button');
+          const label =
+            event.type === 3
+              ? sources[event.data.source] || `Source ${event.data.source}`
+              : names[event.type] || `Type ${event.type}`;
+          const target =
+            event.data && event.data.id !== undefined
+              ? ` · node ${event.data.id}`
+              : '';
+          button.textContent = `#${index + 1} +${
+            event.timestamp - events[0].timestamp
+          }ms ${label}${target}`;
+          button.setAttribute('aria-pressed', String(index === selected));
+          button.onclick = () => {
+            selected = index;
+            render();
+          };
+          $('event-list').append(button);
+        }
+        $('detail').textContent =
+          selected < 0
+            ? 'No event selected.'
+            : JSON.stringify(events[selected], null, 2);
+      }
+      function capture(event) {
+        events.push(event);
+        if (selected < 0 || (event.type === 2 && events[selected].type !== 2))
+          selected = events.length - 1;
+        if (!renderPending) {
+          renderPending = true;
+          requestAnimationFrame(render);
+        }
+      }
+      function stop() {
+        if (stopRecording) stopRecording();
+        stopRecording = undefined;
+      }
+      function restart() {
+        const options = {
+          // Explicit type options also implement the "Mask all" checkbox.
+          // maskAllInputs: true would override these options and the strategy.
+          maskInputOptions: {
+            ...Object.fromEntries(
+              maskControls.map((input) => [input.dataset.mask, input.checked]),
+            ),
+            maskLengthStrategy: $('mask-length-strategy').value,
+          },
+          sampling: {
+            mousemove: $('track-move').checked,
+            mouseInteraction: $('track-interaction').checked,
+            input: $('input-last').checked ? 'last' : 'all',
+          },
+        };
+        if (location.protocol === 'file:') {
+          status(
+            'Serve the repository over HTTP: python3 -m http.server 8000, then open this page through localhost:8000.',
+            true,
+          );
+          return;
+        }
+        const current = ++generation;
+        stop();
+        events.length = 0;
+        selected = -1;
+        render();
+        status('Loading form and recorder…');
+        const initiallyChecked = $('initial-checked').checked;
+        frame.onload = () => {
+          if (current !== generation) return;
+          const doc = frame.contentDocument;
+          const checkbox = doc.querySelector('input[type="checkbox"]');
+          if (!checkbox) {
+            status('Could not load playground-form.html.', true);
+            return;
+          }
+          if (initiallyChecked) checkbox.setAttribute('checked', '');
+          else checkbox.removeAttribute('checked');
+          const script = doc.createElement('script');
+          script.src =
+            new URL('../../dist/rrweb.umd.cjs', location.href).href +
+            `?v=${Date.now()}`;
+          script.onerror = () => {
+            if (current === generation)
+              status(
+                'Cannot load the recorder bundle. Run yarn workspace rrweb build, then Apply again.',
+                true,
+              );
+          };
+          script.onload = () => {
+            if (current !== generation) return;
+            try {
+              stopRecording = frame.contentWindow.rrweb.record({
+                ...options,
+                emit: capture,
+              });
+              if (typeof stopRecording !== 'function')
+                throw new Error(
+                  'Recorder did not start. Check the browser console.',
+                );
+              status('Recording — settings applied.');
+            } catch (error) {
+              stop();
+              status(error.message, true);
+            }
+          };
+          doc.head.append(script);
+        };
+        frame.src = `playground-form.html?session=${current}`;
+      }
+      $('apply').onclick = restart;
+      $('filter').onchange = render;
+      const maskControls = [];
+      const maskGroups = {
+        'mask-form-types': {
+          text: 'Text',
+          password: 'Password',
+          checkbox: 'Checkbox',
+          radio: 'Radio',
+          textarea: 'Text area',
+          select: 'Select menu',
+        },
+        'mask-other-types': {
+          color: 'Color',
+          date: 'Date',
+          'datetime-local': 'Date and time',
+          email: 'Email',
+          month: 'Month',
+          number: 'Number',
+          range: 'Range',
+          search: 'Search',
+          tel: 'Telephone',
+          time: 'Time',
+          url: 'URL',
+          week: 'Week',
+        },
+      };
+      for (const [group, types] of Object.entries(maskGroups)) {
+        for (const [type, name] of Object.entries(types)) {
+          const label = document.createElement('label');
+          label.className = 'option';
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.dataset.mask = type;
+          input.checked = true;
+          label.append(input, document.createTextNode(name));
+          $(group).append(label);
+          maskControls.push(input);
+        }
+      }
+      function linkGroup(parent, children) {
+        parent.onchange = () => {
+          children.forEach((child) => (child.checked = parent.checked));
+          parent.indeterminate = false;
+        };
+        children.forEach(
+          (child) =>
+            (child.onchange = () => {
+              const count = children.filter((input) => input.checked).length;
+              parent.checked = count === children.length;
+              parent.indeterminate = count > 0 && count < children.length;
+            }),
+        );
+      }
+      linkGroup($('mask-all'), maskControls);
+      linkGroup($('track-all'), [$('track-move'), $('track-interaction')]);
+      document
+        .querySelector('main > section')
+        .addEventListener('change', () => {
+          status('Settings changed — Apply & restart to use them.');
+        });
+      window.addEventListener('beforeunload', stop);
+      restart();
+    </script>
+  </body>
+</html>
