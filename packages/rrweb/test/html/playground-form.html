@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>rrweb form playground</title>
+    <title>playground-form.html</title>
     <style>
       * {
         box-sizing: border-box;
@@ -61,7 +61,7 @@
     </style>
   </head>
   <body>
-    <form autocomplete="off" onsubmit="return false">
+    <form autocomplete="off" method="get">
       <div class="field">
         <label for="text">Text input</label>
         <input
@@ -134,6 +134,9 @@
         >
 pre value</textarea
         >
+      </div>
+      <div class="field">
+        <button type="submit">Submit</button>
       </div>
     </form>
   </body>
