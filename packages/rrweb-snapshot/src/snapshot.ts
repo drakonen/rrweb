@@ -623,7 +623,7 @@ function serializeElementNode(
       attributes.type !== 'checkbox' &&
       attributes.type !== 'submit' &&
       attributes.type !== 'button' &&
-      value
+      (value || 'value' in attributes)
     ) {
       attributes.value = maskInputValue({
         element: n,

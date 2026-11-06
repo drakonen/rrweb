@@ -1,3 +1,4 @@
+import { isFocused, maskedInputEdits } from './masked-input';
 import {
   type MaskInputOptions,
   maskInputValue,
@@ -195,7 +196,7 @@ function initMoveObserver({
   });
 }
 
-function initMouseInteractionObserver({
+export function initMouseInteractionObserver({
   mouseInteractionCb,
   doc,
   mirror,
@@ -222,6 +223,8 @@ function initMouseInteractionObserver({
       if (isBlocked(target, blockClass, blockSelector, true)) {
         return;
       }
+      // The input observer emits the final value and the masked blur together.
+      if (eventKey === 'Blur' && maskedInputEdits.get(doc)?.has(target)) return;
       let pointerType: PointerTypes | null = null;
       let thisEventKey = eventKey;
       if ('pointerType' in event) {
@@ -384,9 +387,9 @@ function initViewportResizeObserver(
 }
 
 export const INPUT_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
-const lastInputValueMap: WeakMap<EventTarget, inputValue> = new WeakMap();
-function initInputObserver({
+export function initInputObserver({
   inputCb,
+  mouseInteractionCb,
   doc,
   mirror,
   blockClass,
@@ -398,7 +401,17 @@ function initInputObserver({
   sampling,
   userTriggeredOnInput,
 }: observerParam): listenerHandler {
+  const lastInputValueMap = new WeakMap<EventTarget, inputValue>();
+  const editing = new WeakSet<EventTarget>();
+  maskedInputEdits.set(doc, editing);
+  let stopped = false;
+  function cleanup() {
+    stopped = true;
+    handlers.forEach((h) => h());
+    if (maskedInputEdits.get(doc) === editing) maskedInputEdits.delete(doc);
+  }
   function eventHandler(event: Event) {
+    if (stopped) return;
     let target = getEventTarget(event) as HTMLElement | null;
     const userTriggered = event.isTrusted;
     const tagName = target && target.tagName;
@@ -425,9 +438,50 @@ function initInputObserver({
     ) {
       return;
     }
+    const type: Lowercase<string> = getInputType(target) || '';
+    const masked = Boolean(
+      maskInputOptions[tagName.toLowerCase() as keyof MaskInputOptions] ||
+        maskInputOptions[type as keyof MaskInputOptions],
+    );
+    const textField =
+      tagName === 'TEXTAREA' ||
+      (tagName === 'INPUT' &&
+        [
+          'text',
+          'password',
+          'email',
+          'search',
+          'tel',
+          'url',
+          'number',
+        ].includes(type));
+    let maskFocus = false;
+    let maskBlur = false;
+    if (editing.has(target) && event.type !== 'blur' && !isFocused(target)) {
+      editing.delete(target);
+    }
+    if (event.type === 'blur') {
+      if (!editing.has(target)) return;
+      editing.delete(target);
+      maskBlur = true;
+    } else if (editing.has(target)) {
+      // Suppress intermediate events before reading or masking their values.
+      return;
+    } else if (
+      masked &&
+      textField &&
+      userTriggered &&
+      (isFocused(target) ||
+        (sampling.input === 'last' && event.type === 'change'))
+    ) {
+      if (sampling.input === 'last') maskBlur = true;
+      else {
+        editing.add(target);
+        maskFocus = true;
+      }
+    }
     let text = (target as HTMLInputElement).value;
     let isChecked = false;
-    const type: Lowercase<string> = getInputType(target) || '';
 
     if (type === 'radio' || type === 'checkbox') {
       isChecked = (target as HTMLInputElement).checked;
@@ -444,12 +498,27 @@ function initInputObserver({
         maskInputFn,
       });
     }
+    if (maskFocus) {
+      callbackWrapper(mouseInteractionCb)({
+        id: mirror.getId(target),
+        type: MouseInteractions.Focus,
+        maskFocus: true,
+      });
+    }
     cbWithDedup(
       target,
       userTriggeredOnInput
         ? { text, isChecked, userTriggered }
         : { text, isChecked },
+      maskFocus || maskBlur,
     );
+    if (maskBlur) {
+      callbackWrapper(mouseInteractionCb)({
+        id: mirror.getId(target),
+        type: MouseInteractions.Blur,
+        maskBlur: true,
+      });
+    }
     // if a radio was checked
     // the other radios with the same name attribute will be unchecked.
     const name: string | undefined = (target as HTMLInputElement).name;
@@ -469,9 +538,10 @@ function initInputObserver({
         });
     }
   }
-  function cbWithDedup(target: EventTarget, v: inputValue) {
+  function cbWithDedup(target: EventTarget, v: inputValue, force = false) {
     const lastInputValue = lastInputValueMap.get(target);
     if (
+      force ||
       !lastInputValue ||
       lastInputValue.text !== v.text ||
       lastInputValue.isChecked !== v.isChecked
@@ -488,11 +558,20 @@ function initInputObserver({
   const handlers: Array<listenerHandler | hookResetter> = events.map(
     (eventName) => on(eventName, callbackWrapper(eventHandler), doc),
   );
+  handlers.push(
+    on('blur', callbackWrapper(eventHandler), doc),
+    on(
+      'focus',
+      (event) => {
+        const target = getEventTarget(event);
+        if (target) editing.delete(target);
+      },
+      doc,
+    ),
+  );
   const currentWindow = doc.defaultView;
   if (!currentWindow) {
-    return () => {
-      handlers.forEach((h) => h());
-    };
+    return cleanup;
   }
   const propertyDescriptor = currentWindow.Object.getOwnPropertyDescriptor(
     currentWindow.HTMLInputElement.prototype,
@@ -528,9 +607,7 @@ function initInputObserver({
       ),
     );
   }
-  return callbackWrapper(() => {
-    handlers.forEach((h) => h());
-  });
+  return callbackWrapper(cleanup);
 }
 
 type GroupingCSSRule =

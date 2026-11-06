@@ -59,6 +59,7 @@ import type {
   mutationData,
   scrollData,
   inputData,
+  mouseInteractionData,
   canvasMutationData,
   styleValueWithPriority,
   mouseMovePos,
@@ -137,6 +138,7 @@ export class Replayer {
   private tailPositions: Array<{ x: number; y: number }> = [];
 
   private emitter: Emitter = mitt();
+  private maskedInputTransitions: mouseInteractionData[] = [];
 
   private nextUserInteractionEvent: eventWithTime | null;
 
@@ -303,6 +305,12 @@ export class Replayer {
           this.applyAdoptedStyleSheet(data);
         });
         this.adoptedStyleSheets = [];
+
+        // Values may coalesce during seeking; transitions must retain their order
+        // and resolve their targets only after reconciliation.
+        const transitions = this.maskedInputTransitions;
+        this.maskedInputTransitions = [];
+        for (const data of transitions) this.emitMaskedInput(data);
       }
 
       if (this.mousePos) {
@@ -845,6 +853,7 @@ export class Replayer {
      * Adding this check to avoid any potential issues.
      */
     if (this.usingVirtualDom) {
+      this.maskedInputTransitions = [];
       this.virtualDom.destroyTree();
       this.usingVirtualDom = false;
     }
@@ -1175,6 +1184,25 @@ export class Replayer {
         if (d.id === -1) {
           break;
         }
+        if (d.maskFocus || d.maskBlur) {
+          if (this.usingVirtualDom) {
+            const target = this.virtualDom.mirror.getNode(
+              d.id,
+            ) as RRElement | null;
+            if (!target) return this.debugNodeNotFound(d, d.id);
+            if (d.maskFocus)
+              target.setAttribute('data-rrweb-masked-editing', 'true');
+            if (d.maskBlur) target.removeAttribute('data-rrweb-masked-editing');
+            this.maskedInputTransitions.push(d);
+          } else {
+            const target = this.mirror.getNode(d.id) as Element | null;
+            if (!target) return this.debugNodeNotFound(d, d.id);
+            if (d.maskFocus)
+              target.setAttribute('data-rrweb-masked-editing', 'true');
+            if (d.maskBlur) target.removeAttribute('data-rrweb-masked-editing');
+            this.emitMaskedInput(d);
+          }
+        }
         const event = new Event(toLowerCase(MouseInteractions[d.type]));
         const target = this.mirror.getNode(d.id);
         if (!target) {
@@ -1183,6 +1211,8 @@ export class Replayer {
         this.emitter.emit(ReplayerEvents.MouseInteraction, {
           type: d.type,
           target,
+          ...(d.maskFocus !== undefined && { maskFocus: d.maskFocus }),
+          ...(d.maskBlur !== undefined && { maskBlur: d.maskBlur }),
         });
         const { triggerFocus } = this.config;
         switch (d.type) {
@@ -1929,6 +1959,13 @@ export class Replayer {
          * its last scroll event.
          */
       }
+    }
+  }
+
+  private emitMaskedInput(d: mouseInteractionData) {
+    const target = this.mirror.getNode(d.id);
+    if (target && (d.maskFocus || d.maskBlur)) {
+      this.emitter.emit(ReplayerEvents.MaskedInput, { ...d, target });
     }
   }
 

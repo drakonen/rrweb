@@ -1,3 +1,4 @@
+import { serializeMaskedInputState } from './masked-input';
 import {
   snapshot,
   slimDOMDefaults,
@@ -379,6 +380,7 @@ function record<T = eventWithTime>(
       recordCanvas,
       inlineImages,
       onSerialize: (n) => {
+        serializeMaskedInputState(n, mirror);
         if (isSerializedIframe(n, mirror)) {
           iframeManager.addIframe(n as HTMLIFrameElement);
         }

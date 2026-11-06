@@ -511,6 +511,8 @@ type mouseInteractionParam = {
   x?: number;
   y?: number;
   pointerType?: PointerTypes;
+  maskFocus?: boolean;
+  maskBlur?: boolean;
 };
 
 export type mouseInteractionCallBack = (d: mouseInteractionParam) => void;
@@ -766,6 +768,7 @@ export type Arguments<T> = T extends (...payload: infer U) => unknown
   : unknown;
 
 export enum ReplayerEvents {
+  MaskedInput = 'masked-input',
   Start = 'start',
   Pause = 'pause',
   /**

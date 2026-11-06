@@ -5285,64 +5285,10 @@ exports[`record integration tests > can use maskInputOptions to configure which 
   {
     \\"type\\": 3,
     \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"**\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"***\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"****\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*****\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"******\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*******\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
+      \\"source\\": 2,
+      \\"id\\": 59,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
     }
   },
   {
@@ -6818,35 +6764,17 @@ exports[`record integration tests > should mask inputs via function call 1`] = `
   {
     \\"type\\": 3,
     \\"data\\": {
+      \\"source\\": 2,
+      \\"id\\": 22,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
+    }
+  },
+  {
+    \\"type\\": 3,
+    \\"data\\": {
       \\"source\\": 5,
       \\"text\\": \\"*\\",
-      \\"isChecked\\": false,
-      \\"id\\": 22
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"**\\",
-      \\"isChecked\\": false,
-      \\"id\\": 22
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"***\\",
-      \\"isChecked\\": false,
-      \\"id\\": 22
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"****\\",
       \\"isChecked\\": false,
       \\"id\\": 22
     }
@@ -6857,6 +6785,15 @@ exports[`record integration tests > should mask inputs via function call 1`] = `
       \\"source\\": 2,
       \\"type\\": 1,
       \\"id\\": 27
+    }
+  },
+  {
+    \\"type\\": 3,
+    \\"data\\": {
+      \\"source\\": 5,
+      \\"text\\": \\"****\\",
+      \\"isChecked\\": false,
+      \\"id\\": 22
     }
   },
   {
@@ -6979,62 +6916,17 @@ exports[`record integration tests > should mask inputs via function call 1`] = `
   {
     \\"type\\": 3,
     \\"data\\": {
+      \\"source\\": 2,
+      \\"id\\": 59,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
+    }
+  },
+  {
+    \\"type\\": 3,
+    \\"data\\": {
       \\"source\\": 5,
       \\"text\\": \\"*\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"**\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"***\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"****\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*****\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"******\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*******\\",
       \\"isChecked\\": false,
       \\"id\\": 59
     }
@@ -7067,116 +6959,17 @@ exports[`record integration tests > should mask inputs via function call 1`] = `
   {
     \\"type\\": 3,
     \\"data\\": {
+      \\"source\\": 2,
+      \\"id\\": 42,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
+    }
+  },
+  {
+    \\"type\\": 3,
+    \\"data\\": {
       \\"source\\": 5,
       \\"text\\": \\"t\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"te\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"tex\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"text\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"texta\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"textar\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"textare\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"textarea\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"textarea \\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"textarea t\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"textarea te\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"textarea tes\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"textarea test\\",
       \\"isChecked\\": false,
       \\"id\\": 42
     }
@@ -7419,53 +7212,17 @@ exports[`record integration tests > should mask password value attribute with ma
   {
     \\"type\\": 3,
     \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*\\",
-      \\"isChecked\\": false,
-      \\"id\\": 18
+      \\"source\\": 2,
+      \\"id\\": 18,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
     }
   },
   {
     \\"type\\": 3,
     \\"data\\": {
       \\"source\\": 5,
-      \\"text\\": \\"**\\",
-      \\"isChecked\\": false,
-      \\"id\\": 18
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"***\\",
-      \\"isChecked\\": false,
-      \\"id\\": 18
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"****\\",
-      \\"isChecked\\": false,
-      \\"id\\": 18
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*****\\",
-      \\"isChecked\\": false,
-      \\"id\\": 18
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"******\\",
+      \\"text\\": \\"********\\",
       \\"isChecked\\": false,
       \\"id\\": 18
     }
@@ -7564,10 +7321,10 @@ exports[`record integration tests > should mask password value attribute with ma
   {
     \\"type\\": 3,
     \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*******\\",
-      \\"isChecked\\": false,
-      \\"id\\": 18
+      \\"source\\": 2,
+      \\"id\\": 18,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
     }
   },
   {
@@ -9970,7 +9727,7 @@ exports[`record integration tests > should not record input values if dynamicall
             \\"attributes\\": {
               \\"id\\": \\"textarea\\",
               \\"size\\": \\"50\\",
-              \\"value\\": \\"*************************\\"
+              \\"value\\": \\"********\\"
             },
             \\"childNodes\\": [],
             \\"id\\": 21
@@ -9985,7 +9742,7 @@ exports[`record integration tests > should not record input values if dynamicall
             \\"attributes\\": {
               \\"size\\": \\"50\\",
               \\"id\\": \\"input\\",
-              \\"value\\": \\"**********************\\"
+              \\"value\\": \\"********\\"
             },
             \\"childNodes\\": [],
             \\"id\\": 22
@@ -9998,7 +9755,7 @@ exports[`record integration tests > should not record input values if dynamicall
     \\"type\\": 3,
     \\"data\\": {
       \\"source\\": 5,
-      \\"text\\": \\"**********************\\",
+      \\"text\\": \\"********\\",
       \\"isChecked\\": false,
       \\"id\\": 22
     }
@@ -10007,7 +9764,7 @@ exports[`record integration tests > should not record input values if dynamicall
     \\"type\\": 3,
     \\"data\\": {
       \\"source\\": 5,
-      \\"text\\": \\"*************************\\",
+      \\"text\\": \\"********\\",
       \\"isChecked\\": false,
       \\"id\\": 21
     }
@@ -10023,26 +9780,17 @@ exports[`record integration tests > should not record input values if dynamicall
   {
     \\"type\\": 3,
     \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"***********************\\",
-      \\"isChecked\\": false,
-      \\"id\\": 22
+      \\"source\\": 2,
+      \\"id\\": 22,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
     }
   },
   {
     \\"type\\": 3,
     \\"data\\": {
       \\"source\\": 5,
-      \\"text\\": \\"************************\\",
-      \\"isChecked\\": false,
-      \\"id\\": 22
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*************************\\",
+      \\"text\\": \\"********\\",
       \\"isChecked\\": false,
       \\"id\\": 22
     }
@@ -10066,44 +9814,17 @@ exports[`record integration tests > should not record input values if dynamicall
   {
     \\"type\\": 3,
     \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"**************************\\",
-      \\"isChecked\\": false,
-      \\"id\\": 21
+      \\"source\\": 2,
+      \\"id\\": 21,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
     }
   },
   {
     \\"type\\": 3,
     \\"data\\": {
       \\"source\\": 5,
-      \\"text\\": \\"***************************\\",
-      \\"isChecked\\": false,
-      \\"id\\": 21
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"****************************\\",
-      \\"isChecked\\": false,
-      \\"id\\": 21
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"**********************************************\\",
-      \\"isChecked\\": false,
-      \\"id\\": 22
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*************************************************\\",
+      \\"text\\": \\"********\\",
       \\"isChecked\\": false,
       \\"id\\": 21
     }
@@ -10117,13 +9838,13 @@ exports[`record integration tests > should not record input values if dynamicall
         {
           \\"id\\": 22,
           \\"attributes\\": {
-            \\"value\\": \\"**********************************************************************************************\\"
+            \\"value\\": \\"********\\"
           }
         },
         {
           \\"id\\": 21,
           \\"attributes\\": {
-            \\"value\\": \\"*************************************************************************************************\\"
+            \\"value\\": \\"********\\"
           }
         }
       ],
@@ -10140,7 +9861,7 @@ exports[`record integration tests > should not record input values if dynamicall
         {
           \\"id\\": 21,
           \\"attributes\\": {
-            \\"value\\": \\"****************************************************************\\"
+            \\"value\\": \\"********\\"
           }
         }
       ],
@@ -10482,7 +10203,7 @@ exports[`record integration tests > should not record input values if maskAllInp
                             \\"attributes\\": {
                               \\"name\\": \\"\\",
                               \\"id\\": \\"\\",
-                              \\"value\\": \\"*\\"
+                              \\"value\\": \\"********\\"
                             },
                             \\"childNodes\\": [
                               {
@@ -10584,7 +10305,7 @@ exports[`record integration tests > should not record input values if maskAllInp
                         \\"type\\": 2,
                         \\"tagName\\": \\"textarea\\",
                         \\"attributes\\": {
-                          \\"value\\": \\"*********\\"
+                          \\"value\\": \\"********\\"
                         },
                         \\"childNodes\\": [],
                         \\"id\\": 62
@@ -10646,35 +10367,17 @@ exports[`record integration tests > should not record input values if maskAllInp
   {
     \\"type\\": 3,
     \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*\\",
-      \\"isChecked\\": false,
-      \\"id\\": 22
+      \\"source\\": 2,
+      \\"id\\": 22,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
     }
   },
   {
     \\"type\\": 3,
     \\"data\\": {
       \\"source\\": 5,
-      \\"text\\": \\"**\\",
-      \\"isChecked\\": false,
-      \\"id\\": 22
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"***\\",
-      \\"isChecked\\": false,
-      \\"id\\": 22
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"****\\",
+      \\"text\\": \\"********\\",
       \\"isChecked\\": false,
       \\"id\\": 22
     }
@@ -10807,64 +10510,10 @@ exports[`record integration tests > should not record input values if maskAllInp
   {
     \\"type\\": 3,
     \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"**\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"***\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"****\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*****\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"******\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*******\\",
-      \\"isChecked\\": false,
-      \\"id\\": 59
+      \\"source\\": 2,
+      \\"id\\": 59,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
     }
   },
   {
@@ -10895,64 +10544,10 @@ exports[`record integration tests > should not record input values if maskAllInp
   {
     \\"type\\": 3,
     \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"**\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"***\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"****\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*****\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"******\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*******\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
+      \\"source\\": 2,
+      \\"id\\": 42,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
     }
   },
   {
@@ -10968,52 +10563,7 @@ exports[`record integration tests > should not record input values if maskAllInp
     \\"type\\": 3,
     \\"data\\": {
       \\"source\\": 5,
-      \\"text\\": \\"*********\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"**********\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"***********\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"************\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*************\\",
-      \\"isChecked\\": false,
-      \\"id\\": 42
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*\\",
+      \\"text\\": \\"********\\",
       \\"isChecked\\": false,
       \\"id\\": 47
     }
@@ -13928,71 +13478,10 @@ exports[`record integration tests > should record input userTriggered values if 
   {
     \\"type\\": 3,
     \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*\\",
-      \\"isChecked\\": false,
-      \\"userTriggered\\": true,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"**\\",
-      \\"isChecked\\": false,
-      \\"userTriggered\\": true,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"***\\",
-      \\"isChecked\\": false,
-      \\"userTriggered\\": true,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"****\\",
-      \\"isChecked\\": false,
-      \\"userTriggered\\": true,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*****\\",
-      \\"isChecked\\": false,
-      \\"userTriggered\\": true,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"******\\",
-      \\"isChecked\\": false,
-      \\"userTriggered\\": true,
-      \\"id\\": 59
-    }
-  },
-  {
-    \\"type\\": 3,
-    \\"data\\": {
-      \\"source\\": 5,
-      \\"text\\": \\"*******\\",
-      \\"isChecked\\": false,
-      \\"userTriggered\\": true,
-      \\"id\\": 59
+      \\"source\\": 2,
+      \\"id\\": 59,
+      \\"type\\": 5,
+      \\"maskFocus\\": true
     }
   },
   {

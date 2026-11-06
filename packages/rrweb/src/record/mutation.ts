@@ -1,3 +1,4 @@
+import { serializeMaskedInputState } from './masked-input';
 import {
   serializeNodeWithId,
   transformAttribute,
@@ -321,6 +322,7 @@ export default class MutationBuffer {
         recordCanvas: this.recordCanvas,
         inlineImages: this.inlineImages,
         onSerialize: (currentN) => {
+          serializeMaskedInputState(currentN, this.mirror);
           if (isSerializedIframe(currentN, this.mirror)) {
             this.iframeManager.addIframe(currentN as HTMLIFrameElement);
           }
