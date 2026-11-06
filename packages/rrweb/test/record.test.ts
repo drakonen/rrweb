@@ -1186,7 +1186,7 @@ describe('record iframes', function (this: ISuite) {
   });
 });
 
-describe('bucketed input masking', function (this: ISuite) {
+describe('masked input editing sessions', function (this: ISuite) {
   const ctx: ISuite = setup.call(
     this,
     `
@@ -1199,7 +1199,7 @@ describe('bucketed input masking', function (this: ISuite) {
     `,
   );
 
-  it('does not emit events for bucketed input masked entries', async function () {
+  it('emits only start and blur events for trusted masked input', async function () {
     await ctx.page.evaluate(() => {
       const { record } = (window as unknown as IWindow).rrweb;
       record({
@@ -1210,24 +1210,77 @@ describe('bucketed input masking', function (this: ISuite) {
         },
       });
     });
+
+    await ctx.page.type('#test', '01234567891');
+
+    const inputEvents = () =>
+      ctx.events
+        .filter(
+          (event): event is eventWithTime & { data: inputData } =>
+            event.type === EventType.IncrementalSnapshot &&
+            event.data.source === IncrementalSource.Input,
+        )
+        .map((event) => event.data);
+
+    await vi.waitFor(() =>
+      expect(inputEvents()).toEqual([
+        expect.objectContaining({ text: '********', maskFocus: true }),
+      ]),
+    );
+    await ctx.page.evaluate(() =>
+      (window as unknown as IWindow).rrweb.record.takeFullSnapshot(),
+    );
+    const snapshots = () =>
+      ctx.events.filter((event) => event.type === EventType.FullSnapshot);
+    await vi.waitFor(() =>
+      expect(JSON.stringify(snapshots().at(-1))).toContain(
+        'data-rrweb-masked-editing',
+      ),
+    );
+    expect(
+      await ctx.page.$eval('#test', (el) =>
+        el.hasAttribute('data-rrweb-masked-editing'),
+      ),
+    ).toBe(false);
+    await ctx.page.$eval('#test', (el) => (el as HTMLInputElement).blur());
+    await vi.waitFor(() =>
+      expect(inputEvents()).toEqual([
+        expect.objectContaining({ text: '********', maskFocus: true }),
+        expect.objectContaining({ text: '********', maskBlur: true }),
+      ]),
+    );
+    await ctx.page.evaluate(() =>
+      (window as unknown as IWindow).rrweb.record.takeFullSnapshot(),
+    );
+    await vi.waitFor(() =>
+      expect(JSON.stringify(snapshots().at(-1))).not.toContain(
+        'data-rrweb-masked-editing',
+      ),
+    );
+  });
+
+  it('caps the placeholder at maxLength', async function () {
+    await ctx.page.evaluate(() => {
+      const input = document.querySelector('input')!;
+      input.maxLength = 3;
+      (window as unknown as IWindow).rrweb.record({
+        emit: (window as unknown as IWindow).emit,
+        maskInputOptions: { text: true },
+      });
+    });
+    await ctx.page.type('#test', 'abc');
+    await ctx.page.$eval('#test', (el) => (el as HTMLInputElement).blur());
     await waitForRAF(ctx.page);
-
-    for (let i = 0; i < 11; i++) {
-      await ctx.page.type('#test', i.toString()[0]);
-      await waitForRAF(ctx.page);
-    }
-
-    const recordedTexts = ctx.events
+    const data = ctx.events
       .filter(
         (event): event is eventWithTime & { data: inputData } =>
           event.type === EventType.IncrementalSnapshot &&
           event.data.source === IncrementalSource.Input,
       )
-      .map((event) => event.data.text);
-
-    const recordedLengths = [1, 2, 3, 4, 5, 10, 20];
-    expect(recordedTexts).toEqual(
-      recordedLengths.map((length) => '*'.repeat(length)),
-    );
+      .map((event) => event.data);
+    expect(data).toEqual([
+      expect.objectContaining({ text: '***', maskFocus: true }),
+      expect.objectContaining({ text: '***', maskBlur: true }),
+    ]);
   });
 });

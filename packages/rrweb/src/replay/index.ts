@@ -131,6 +131,8 @@ export class Replayer {
   // In the fast-forward process, if the virtual-dom optimization is used, this flag value is true.
   public usingVirtualDom = false;
   public virtualDom: RRDocument = new RRDocument();
+  // Values may coalesce during seeking; editing notifications must not.
+  private pendingMaskedInputs: inputData[] = [];
 
   private mouse: HTMLDivElement;
   private mouseTail: HTMLCanvasElement | null = null;
@@ -270,6 +272,9 @@ export class Replayer {
 
         this.virtualDom.destroyTree();
         this.usingVirtualDom = false;
+        for (const data of this.pendingMaskedInputs.splice(0)) {
+          this.emitMaskedInput(data);
+        }
 
         // If these legacy missing nodes haven't been resolved, they should be converted to real Nodes.
         if (Object.keys(this.legacy_missingNodeRetryMap).length) {
@@ -847,6 +852,7 @@ export class Replayer {
     if (this.usingVirtualDom) {
       this.virtualDom.destroyTree();
       this.usingVirtualDom = false;
+      this.pendingMaskedInputs.length = 0;
     }
 
     this.mirror.reset();
@@ -1302,6 +1308,10 @@ export class Replayer {
             return this.debugNodeNotFound(d, d.id);
           }
           target.inputData = d;
+          if (d.maskFocus || d.maskBlur) {
+            this.applyMaskedInputState(target, d);
+            this.pendingMaskedInputs.push(d);
+          }
           break;
         }
         this.applyInput(d);
@@ -1940,9 +1950,27 @@ export class Replayer {
     try {
       (target as HTMLInputElement).checked = d.isChecked;
       (target as HTMLInputElement).value = d.text;
+      if (!this.usingVirtualDom && (d.maskFocus || d.maskBlur)) {
+        this.applyMaskedInputState(target as HTMLElement, d);
+        this.emitMaskedInput(d);
+      }
     } catch (error) {
       // for safe
     }
+  }
+
+  private applyMaskedInputState(
+    target: Pick<HTMLElement, 'setAttribute' | 'removeAttribute'>,
+    data: inputData,
+  ) {
+    if (data.maskBlur) target.removeAttribute('data-rrweb-masked-editing');
+    else target.setAttribute('data-rrweb-masked-editing', 'true');
+  }
+
+  private emitMaskedInput(data: inputData) {
+    const target = this.mirror.getNode(data.id);
+    if (target)
+      this.emitter.emit(ReplayerEvents.MaskedInput, { ...data, target });
   }
 
   private applySelection(d: selectionData) {

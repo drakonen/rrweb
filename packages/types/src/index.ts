@@ -646,6 +646,11 @@ export type inputValue = {
   // Example of `userTriggered` in action:
   // User clicks on radio element (userTriggered: true) which triggers the other radio element to change (userTriggered: false)
   userTriggered?: boolean;
+
+  /** The user started editing a masked text field; focus alone does not count. */
+  maskFocus?: boolean;
+  /** The masked edit ended. Also used for change-only input sampling. */
+  maskBlur?: boolean;
 };
 
 export type inputCallback = (v: inputValue & { id: number }) => void;
@@ -780,6 +785,7 @@ export enum ReplayerEvents {
   SkipStart = 'skip-start',
   SkipEnd = 'skip-end',
   MouseInteraction = 'mouse-interaction',
+  MaskedInput = 'masked-input',
   EventCast = 'event-cast',
   CustomEvent = 'custom-event',
   Annotation = 'annotation',

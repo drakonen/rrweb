@@ -5,6 +5,7 @@ import {
   createMirror,
 } from 'rrweb-snapshot';
 import { initObservers, mutationBuffers } from './observer';
+import { serializeMaskedInputState } from './masked-input';
 import {
   on,
   getWindowWidth,
@@ -379,6 +380,7 @@ function record<T = eventWithTime>(
       recordCanvas,
       inlineImages,
       onSerialize: (n) => {
+        serializeMaskedInputState(n, mirror);
         if (isSerializedIframe(n, mirror)) {
           iframeManager.addIframe(n as HTMLIFrameElement);
         }

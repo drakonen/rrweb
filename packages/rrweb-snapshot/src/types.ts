@@ -47,6 +47,7 @@ export type MaskInputOptions = Partial<{
   textarea: boolean;
   select: boolean;
   password: boolean;
+  /** @deprecated Both strategies use a fixed placeholder; use maskInputFn to customize it. */
   maskLengthStrategy: 'bucketed' | 'fixed';
 }>;
 

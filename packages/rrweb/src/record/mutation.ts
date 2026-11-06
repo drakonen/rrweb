@@ -31,6 +31,7 @@ import {
   closestElementOfNode,
 } from '../utils';
 import dom from '@rrweb/utils';
+import { serializeMaskedInputState } from './masked-input';
 
 const moveKey = (id: number, parentId: number) => `${id}@${parentId}`;
 
@@ -321,6 +322,7 @@ export default class MutationBuffer {
         recordCanvas: this.recordCanvas,
         inlineImages: this.inlineImages,
         onSerialize: (currentN) => {
+          serializeMaskedInputState(currentN, this.mirror);
           if (isSerializedIframe(currentN, this.mirror)) {
             this.iframeManager.addIframe(currentN as HTMLIFrameElement);
           }

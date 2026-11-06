@@ -17,20 +17,41 @@ function mask(value: string | null, overrides: Partial<MaskArguments> = {}) {
   });
 }
 
-describe('maskInputValue length strategies', () => {
+describe('maskInputValue fixed placeholders', () => {
   it.each([null, ''])('keeps an empty value (%s) empty', (value) => {
     expect(mask(value)).toBe('');
   });
 
-  it.each([undefined, 'fixed'] as const)(
-    'preserves character-count masking with strategy %s',
+  it.each([undefined, 'fixed', 'bucketed'] as const)(
+    'uses eight characters with strategy %s',
     (maskLengthStrategy) => {
       expect(
         mask('private input', {
           maskInputOptions: { text: true, maskLengthStrategy },
         }),
-      ).toBe('*************');
+      ).toBe('********');
     },
+  );
+
+  it.each(['input', 'textarea'] as const)(
+    'caps the placeholder at the %s maximum length',
+    (tagName) => {
+      const element = document.createElement(tagName);
+      for (const [maxLength, expected] of [
+        [0, ''],
+        [3, '***'],
+        [8, '********'],
+        [20, '********'],
+      ] as const) {
+        element.maxLength = maxLength;
+        expect(mask('private input', { element, tagName })).toBe(expected);
+      }
+    },
+  );
+
+  it.each(['a', 'private input', 'a'.repeat(100)])(
+    'does not expose the length of %s',
+    (value) => expect(mask(value)).toBe('********'),
   );
 
   it('does not enable masking just by selecting a strategy', () => {

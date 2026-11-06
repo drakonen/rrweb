@@ -51,6 +51,11 @@ import type {
   customElementCallback,
 } from '@rrweb/types';
 import MutationBuffer from './mutation';
+import {
+  isFocused,
+  isMaskedInputEditing,
+  maskedInputEdits,
+} from './masked-input';
 import { callbackWrapper } from './error-handler';
 import dom, { mutationObserverCtor } from '@rrweb/utils';
 
@@ -384,8 +389,7 @@ function initViewportResizeObserver(
 }
 
 export const INPUT_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
-const lastInputValueMap: WeakMap<EventTarget, inputValue> = new WeakMap();
-function initInputObserver({
+export function initInputObserver({
   inputCb,
   doc,
   mirror,
@@ -398,8 +402,19 @@ function initInputObserver({
   sampling,
   userTriggeredOnInput,
 }: observerParam): listenerHandler {
+  const lastInputValueMap = new WeakMap<EventTarget, inputValue>();
+  const maskedEdits = new WeakSet<EventTarget>();
+  maskedInputEdits.set(doc, maskedEdits);
+  let stopped = false;
+
   function eventHandler(event: Event) {
+    if (stopped) return;
     let target = getEventTarget(event) as HTMLElement | null;
+    if (event.type === 'focus') {
+      // A removed focused field may never emit blur. Refocusing starts fresh.
+      if (target) maskedEdits.delete(target);
+      return;
+    }
     const userTriggered = event.isTrusted;
     const tagName = target && target.tagName;
 
@@ -425,16 +440,53 @@ function initInputObserver({
     ) {
       return;
     }
+    const wasEditing = maskedEdits.has(target);
+    if (event.type === 'blur' && !wasEditing) return;
+    // Resolve suppression before reading or masking the value. A field removed
+    // without blur must still be able to report subsequent programmatic changes.
+    if (event.type !== 'blur' && isMaskedInputEditing(target)) return;
+
+    const type: Lowercase<string> = getInputType(target) || '';
+    const isMasked = Boolean(
+      maskInputOptions[tagName.toLowerCase() as keyof MaskInputOptions] ||
+        maskInputOptions[type as keyof MaskInputOptions],
+    );
+    const isMaskedTextField =
+      isMasked &&
+      (tagName === 'TEXTAREA' ||
+        (tagName === 'INPUT' &&
+          [
+            'text',
+            'password',
+            'email',
+            'search',
+            'tel',
+            'url',
+            'number',
+          ].includes(type)));
+
+    const flags: Pick<inputValue, 'maskFocus' | 'maskBlur'> = {};
+    if (wasEditing) {
+      maskedEdits.delete(target);
+      flags.maskBlur = true;
+    } else if (
+      isMaskedTextField &&
+      event.isTrusted &&
+      (event.type === 'input' || event.type === 'change')
+    ) {
+      if (sampling.input === 'last' || !isFocused(target)) {
+        flags.maskBlur = true;
+      } else {
+        maskedEdits.add(target);
+        flags.maskFocus = true;
+      }
+    }
+
     let text = (target as HTMLInputElement).value;
     let isChecked = false;
-    const type: Lowercase<string> = getInputType(target) || '';
-
     if (type === 'radio' || type === 'checkbox') {
       isChecked = (target as HTMLInputElement).checked;
-    } else if (
-      maskInputOptions[tagName.toLowerCase() as keyof MaskInputOptions] ||
-      maskInputOptions[type as keyof MaskInputOptions]
-    ) {
+    } else if (isMasked) {
       text = maskInputValue({
         element: target,
         maskInputOptions,
@@ -444,12 +496,9 @@ function initInputObserver({
         maskInputFn,
       });
     }
-    cbWithDedup(
-      target,
-      userTriggeredOnInput
-        ? { text, isChecked, userTriggered }
-        : { text, isChecked },
-    );
+    const value: inputValue = { text, isChecked, ...flags };
+    if (userTriggeredOnInput) value.userTriggered = userTriggered;
+    cbWithDedup(target, value);
     // if a radio was checked
     // the other radios with the same name attribute will be unchecked.
     const name: string | undefined = (target as HTMLInputElement).name;
@@ -472,6 +521,8 @@ function initInputObserver({
   function cbWithDedup(target: EventTarget, v: inputValue) {
     const lastInputValue = lastInputValueMap.get(target);
     if (
+      v.maskFocus ||
+      v.maskBlur ||
       !lastInputValue ||
       lastInputValue.text !== v.text ||
       lastInputValue.isChecked !== v.isChecked
@@ -488,11 +539,16 @@ function initInputObserver({
   const handlers: Array<listenerHandler | hookResetter> = events.map(
     (eventName) => on(eventName, callbackWrapper(eventHandler), doc),
   );
+  handlers.push(on('blur', callbackWrapper(eventHandler), doc));
+  handlers.push(on('focus', callbackWrapper(eventHandler), doc));
+  const cleanup = () => {
+    stopped = true;
+    handlers.forEach((h) => h());
+    if (maskedInputEdits.get(doc) === maskedEdits) maskedInputEdits.delete(doc);
+  };
   const currentWindow = doc.defaultView;
   if (!currentWindow) {
-    return () => {
-      handlers.forEach((h) => h());
-    };
+    return cleanup;
   }
   const propertyDescriptor = currentWindow.Object.getOwnPropertyDescriptor(
     currentWindow.HTMLInputElement.prototype,
@@ -528,9 +584,7 @@ function initInputObserver({
       ),
     );
   }
-  return callbackWrapper(() => {
-    handlers.forEach((h) => h());
-  });
+  return callbackWrapper(cleanup);
 }
 
 type GroupingCSSRule =

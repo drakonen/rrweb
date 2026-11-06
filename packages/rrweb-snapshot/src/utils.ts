@@ -289,7 +289,11 @@ export function maskInputValue({
     if (maskInputFn) {
       text = maskInputFn(text, element);
     } else {
-      text = '*'.repeat(text.length);
+      const maxLength = (element as HTMLInputElement | HTMLTextAreaElement)
+        .maxLength;
+      text = text
+        ? '*'.repeat(maxLength >= 0 ? Math.min(8, maxLength) : 8)
+        : '';
     }
   }
   return text;
