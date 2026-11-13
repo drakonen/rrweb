@@ -169,6 +169,16 @@
         color: #536477;
         font-size: 13px;
       }
+      [hidden] {
+        display: none !important;
+      }
+      [role='tab'][aria-selected='true'] {
+        background: #e5efff;
+        border-color: #185dba;
+      }
+      #player-host iframe {
+        height: 550px;
+      }
       .events {
         display: grid;
         grid-template-columns: minmax(250px, 1fr) minmax(300px, 2fr);
@@ -284,20 +294,91 @@
       </section>
       <section class="wide">
         <h2>Captured events</h2>
-        <div class="toolbar">
-          <label for="filter">Show</label>
-          <select id="filter">
-            <option value="relevant">Snapshots, mutations &amp; inputs</option>
-            <option value="all">All events</option>
-            <option value="input">Input events</option>
-            <option value="mutation">Mutations</option>
-          </select>
-          <span id="count">0 captured</span>
+        <div class="toolbar" role="tablist" aria-label="Recording viewer">
+          <button
+            id="events-tab"
+            role="tab"
+            aria-selected="true"
+            aria-controls="events-panel"
+          >
+            Events
+          </button>
+          <button
+            id="player-tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="player-panel"
+            tabindex="-1"
+          >
+            Player
+          </button>
+          <button
+            id="raw-tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="raw-panel"
+            tabindex="-1"
+          >
+            Raw JSON
+          </button>
         </div>
-        <div class="events">
-          <div id="event-list" aria-label="Captured event list"></div>
-          <pre id="detail" tabindex="0" aria-label="Selected event JSON">
+        <div id="events-panel" role="tabpanel" aria-labelledby="events-tab">
+          <div class="toolbar">
+            <label for="filter">Show</label>
+            <select id="filter">
+              <option value="relevant">
+                Snapshots, mutations &amp; inputs
+              </option>
+              <option value="all">All events</option>
+              <option value="input">Input events</option>
+              <option value="mutation">Mutations</option>
+            </select>
+            <span id="count">0 captured</span>
+          </div>
+          <div class="events">
+            <div id="event-list" aria-label="Captured event list"></div>
+            <pre id="detail" tabindex="0" aria-label="Selected event JSON">
 Waiting for a recording…</pre
+            >
+          </div>
+        </div>
+        <div
+          id="player-panel"
+          role="tabpanel"
+          aria-labelledby="player-tab"
+          hidden
+        >
+          <div class="toolbar">
+            <button id="refresh-player">Load latest events</button>
+            <span
+              id="player-status"
+              class="muted"
+              role="status"
+              aria-live="polite"
+            ></span>
+          </div>
+          <p class="muted">
+            Playback uses the events captured when loaded. Recording continues;
+            load the latest events to include new interactions.
+          </p>
+          <div id="player-host"></div>
+        </div>
+        <div id="raw-panel" role="tabpanel" aria-labelledby="raw-tab" hidden>
+          <div class="toolbar">
+            <button id="copy-json">Copy</button>
+            <span
+              id="copy-status"
+              class="muted"
+              role="status"
+              aria-live="polite"
+            ></span>
+          </div>
+          <pre
+            id="raw-json"
+            tabindex="0"
+            aria-label="All captured events as JSON"
+          >
+[]</pre
           >
         </div>
       </section>
@@ -314,6 +395,123 @@ Waiting for a recording…</pre
       let renderPending = false;
       let scrollToLatest = false;
       let recorderEnums = {};
+
+      let player;
+      let playerFrame;
+      let playerLoad = 0;
+      function clearPlayer() {
+        playerLoad++;
+        if (player) {
+          player.getReplayer().destroy();
+          player.$destroy();
+          player = undefined;
+        }
+        playerFrame = undefined;
+        $('player-host').replaceChildren();
+      }
+      function loadPlayer() {
+        clearPlayer();
+        if (events.length < 2 || !events.some((event) => event.type === 2)) {
+          $('player-status').textContent =
+            'Waiting for a full snapshot. Load latest events once recording is ready.';
+          return;
+        }
+        const snapshot = JSON.parse(JSON.stringify(events));
+        const current = playerLoad;
+        const iframe = document.createElement('iframe');
+        playerFrame = iframe;
+        iframe.title = 'Recorded session player';
+        iframe.allowFullscreen = true;
+        const assets = new URL('../../../rrweb-player/dist/', location.href);
+        const assetVersion = Date.now();
+        $('player-status').textContent = 'Loading player…';
+        iframe.onload = () => {
+          if (current !== playerLoad) return;
+          try {
+            const bundle = iframe.contentWindow.rrwebPlayer;
+            if (!bundle)
+              throw new Error(
+                'Cannot load the player bundle. Run yarn build:all from the repository root, then load latest events again.',
+              );
+            const Player = bundle.default || bundle;
+            player = new Player({
+              target: iframe.contentDocument.body,
+              props: {
+                events: snapshot,
+                width: iframe.clientWidth,
+                height: 470,
+                autoPlay: false,
+              },
+            });
+            $(
+              'player-status',
+            ).textContent = `Loaded ${snapshot.length} events.`;
+          } catch (error) {
+            clearPlayer();
+            $('player-status').textContent = error.message;
+          }
+        };
+        iframe.srcdoc = `<!doctype html><html><head>
+          <link rel="stylesheet" href="${assets}style.css?v=${assetVersion}">
+          <style>body { margin: 0; }<\/style>
+          <script src="${assets}rrweb-player.umd.cjs?v=${assetVersion}"><\/script>
+          </head><body></body></html>`;
+        $('player-host').append(iframe);
+      }
+      const viewerTabs = ['events', 'player', 'raw'];
+      $('copy-json').onclick = async () => {
+        $('copy-status').textContent = '';
+        try {
+          await navigator.clipboard.writeText(JSON.stringify(events, null, 2));
+          $('copy-status').textContent = 'Copied!';
+        } catch {
+          $('copy-status').textContent =
+            'Could not copy. Select the JSON and copy it manually.';
+        }
+      };
+      function renderRawJSON() {
+        if (!$('raw-panel').hidden)
+          $('raw-json').textContent = JSON.stringify(events, null, 2);
+      }
+      function selectViewer(view) {
+        for (const name of viewerTabs) {
+          const active = name === view;
+          $(`${name}-tab`).setAttribute('aria-selected', String(active));
+          $(`${name}-tab`).tabIndex = active ? 0 : -1;
+          $(`${name}-panel`).hidden = !active;
+        }
+        if (view === 'player') loadPlayer();
+        else clearPlayer();
+        renderRawJSON();
+      }
+      for (const name of viewerTabs) {
+        $(`${name}-tab`).onclick = () => selectViewer(name);
+        $(`${name}-tab`).onkeydown = (event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
+            return;
+          event.preventDefault();
+          const next =
+            event.key === 'Home'
+              ? viewerTabs[0]
+              : event.key === 'End'
+              ? viewerTabs[viewerTabs.length - 1]
+              : viewerTabs[
+                  (viewerTabs.indexOf(name) +
+                    (event.key === 'ArrowRight' ? 1 : -1) +
+                    viewerTabs.length) %
+                    viewerTabs.length
+                ];
+          selectViewer(next);
+          $(`${next}-tab`).focus();
+        };
+      }
+      $('refresh-player').onclick = loadPlayer;
+      new ResizeObserver(() => {
+        if (player && playerFrame?.clientWidth) {
+          player.$set({ width: playerFrame.clientWidth });
+          requestAnimationFrame(() => player?.triggerResize());
+        }
+      }).observe($('player-host'));
 
       function enumName(name, value) {
         const member = recorderEnums[name]?.[value];
@@ -349,6 +547,7 @@ Waiting for a recording…</pre
       }
       function render() {
         renderPending = false;
+        renderRawJSON();
         const list = $('event-list');
         const previousScrollTop = list.scrollTop;
         const visible = events
@@ -422,6 +621,9 @@ Waiting for a recording…</pre
         }
         const current = ++generation;
         stop();
+        clearPlayer();
+        $('player-status').textContent =
+          'Recording restarted. Load latest events when ready.';
         events.length = 0;
         selected = -1;
         render();
