@@ -28,7 +28,7 @@
       }
       main {
         display: grid;
-        grid-template-columns: minmax(280px, 1fr) minmax(400px, 2fr);
+        grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
         gap: 18px;
       }
       section {
@@ -160,11 +160,35 @@
         width: 100%;
         height: 470px;
         border: 0;
-        background: var(--surface);
+        background: #fff;
+      }
+      #settings summary {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        cursor: pointer;
+        list-style: none;
+      }
+      #settings summary::-webkit-details-marker {
+        display: none;
+      }
+      #settings summary::before {
+        content: '▸';
+        color: var(--muted);
+      }
+      #settings[open] summary::before {
+        content: '▾';
+      }
+      #settings summary h2 {
+        margin: 0;
+      }
+      #settings[open] summary {
+        margin-bottom: 14px;
       }
       #status {
-        padding: 10px 0;
         font-weight: 600;
+        margin-left: auto;
       }
       #status.error {
         color: var(--error);
@@ -183,33 +207,53 @@
       #player-host iframe {
         height: 550px;
       }
-      .events {
-        display: grid;
-        grid-template-columns: minmax(250px, 1fr) minmax(300px, 2fr);
-        gap: 14px;
-      }
       #event-list {
-        height: 380px;
+        height: 470px;
         overflow: auto;
         border: 1px solid var(--border);
         border-radius: 5px;
       }
-      #event-list button {
-        display: block;
+      .event {
+        border-bottom: 1px solid var(--border);
+      }
+      .event > button {
+        display: flex;
+        align-items: center;
+        gap: 6px;
         width: 100%;
         border: 0;
-        border-bottom: 1px solid var(--border);
         border-radius: 0;
+        padding: 6px 8px;
         text-align: left;
         font: 12px/1.5 monospace;
+        white-space: nowrap;
+        overflow: hidden;
       }
-      #event-list button[aria-pressed='true'] {
+      .event > button[aria-expanded='true'] {
         background: var(--selected);
+      }
+      .event .idx,
+      .event .time {
+        flex-shrink: 0;
+        color: var(--muted);
+      }
+      .event .target {
+        margin-left: auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--muted);
+      }
+      .chip {
+        flex-shrink: 0;
+        padding: 0 6px;
+        border-radius: 4px;
+        font-weight: 600;
+        background: hsl(var(--h) 60% var(--chip-bg-l));
+        color: hsl(var(--h) 70% var(--chip-fg-l));
       }
       pre {
         margin: 0;
         padding: 14px;
-        height: 380px;
         overflow: auto;
         background: #142235;
         color: #dce8f5;
@@ -218,9 +262,19 @@
         white-space: pre-wrap;
         overflow-wrap: anywhere;
       }
+      #raw-json {
+        height: 380px;
+      }
+      .event-json {
+        max-height: 320px;
+        border-radius: 0;
+      }
+      .note {
+        user-select: none;
+        color: #85b37a;
+      }
       @media (max-width: 800px) {
-        main,
-        .events {
+        main {
           grid-template-columns: 1fr;
         }
         .wide {
@@ -237,6 +291,8 @@
         --brand: #3451b2;
         --selected: #e9edfa;
         --error: #b42318;
+        --chip-bg-l: 89%;
+        --chip-fg-l: 28%;
       }
       :root[data-theme='dark'] {
         color-scheme: dark;
@@ -248,6 +304,8 @@
         --brand: #a8b1ff;
         --selected: #30334f;
         --error: #ff9b91;
+        --chip-bg-l: 24%;
+        --chip-fg-l: 84%;
       }
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme='light']) {
@@ -260,6 +318,8 @@
           --brand: #a8b1ff;
           --selected: #30334f;
           --error: #ff9b91;
+          --chip-bg-l: 24%;
+          --chip-fg-l: 84%;
         }
       }
       a {
@@ -390,8 +450,12 @@
       </p>
     </aside>
     <main>
-      <section>
-        <h2>Recorder settings</h2>
+      <section class="wide">
+        <details id="settings">
+          <summary>
+            <h2>Recorder settings</h2>
+            <div id="status" role="status" aria-live="polite">Loading…</div>
+          </summary>
         <label for="config">Recorder options (JSON)</label>
         <a
           id="options-docs"
@@ -424,7 +488,7 @@
           <button class="primary" id="apply">Apply &amp; restart</button>
           <button id="format-config">Format JSON</button>
         </div>
-        <div id="status" role="status" aria-live="polite">Loading…</div>
+        </details>
       </section>
       <section>
         <h2>Live page</h2>
@@ -447,7 +511,7 @@
           ></iframe>
         </div>
       </section>
-      <section class="wide">
+      <section>
         <h2>Captured events</h2>
         <div class="toolbar" role="tablist" aria-label="Recording viewer">
           <button
@@ -490,12 +554,7 @@
             </select>
             <span id="count">0 captured</span>
           </div>
-          <div class="events">
-            <div id="event-list" aria-label="Captured event list"></div>
-            <pre id="detail" tabindex="0" aria-label="Selected event JSON">
-Waiting for a recording…</pre
-            >
-          </div>
+          <div id="event-list" aria-label="Captured event list"></div>
         </div>
         <div
           id="player-panel"
@@ -686,17 +745,98 @@ Waiting for a recording…</pre
         const member = recorderEnums[name]?.[value];
         return member === undefined ? `${name}(${value})` : `${name}.${member}`;
       }
-      function eventLabel(event) {
-        let label = enumName('EventType', event.type);
+      function relTime(ms) {
+        const seconds = Math.max(0, Math.floor(ms / 1000));
+        return [seconds / 3600, (seconds / 60) % 60, seconds % 60]
+          .map((unit) => String(Math.floor(unit)).padStart(2, '0'))
+          .join(':');
+      }
+      function part(className, text) {
+        const span = document.createElement('span');
+        span.className = className;
+        span.textContent = text;
+        return span;
+      }
+      function chip(name, value, hue) {
+        const member = recorderEnums[name]?.[value];
+        const span = part(
+          'chip',
+          member === undefined ? `${name}(${value})` : member,
+        );
+        span.style.setProperty('--h', String(((hue % 360) + 360) % 360));
+        span.title = enumName(name, value);
+        return span;
+      }
+      function summaryParts(event, index) {
+        const parts = [
+          part('idx', `#${index + 1}`),
+          part('time', relTime(event.timestamp - events[0].timestamp)),
+          chip('EventType', event.type, 200 + event.type * 87),
+        ];
         if (event.type === recorderEnums.EventType?.IncrementalSnapshot) {
-          label += ` · ${enumName('IncrementalSource', event.data.source)}`;
+          parts.push(
+            chip('IncrementalSource', event.data.source, event.data.source * 47),
+          );
           if (
             event.data.source ===
             recorderEnums.IncrementalSource?.MouseInteraction
           )
-            label += ` · ${enumName('MouseInteractions', event.data.type)}`;
+            parts.push(
+              chip('MouseInteractions', event.data.type, 130 + event.data.type * 29),
+            );
         }
-        return label;
+        if (event.data && event.data.id !== undefined)
+          parts.push(part('target', `node ${event.data.id}`));
+        return parts;
+      }
+      function annotation(event, path, value) {
+        const key = path.join('.');
+        if (key === 'type') return enumName('EventType', value);
+        if (key === 'timestamp')
+          return relTime(value - events[0].timestamp);
+        if (event.type === recorderEnums.EventType?.IncrementalSnapshot) {
+          if (key === 'data.source')
+            return enumName('IncrementalSource', value);
+          if (
+            key === 'data.type' &&
+            event.data.source ===
+              recorderEnums.IncrementalSource?.MouseInteraction
+          )
+            return enumName('MouseInteractions', value);
+        }
+        return undefined;
+      }
+      function buildAnnotatedJSON(parent, value, indent, path, event) {
+        const pad = ' '.repeat(indent + 2);
+        if (Array.isArray(value)) {
+          if (!value.length) return parent.append('[]');
+          parent.append('[\n');
+          value.forEach((item, i) => {
+            parent.append(pad);
+            buildAnnotatedJSON(parent, item, indent + 2, [...path, i], event);
+            parent.append((i < value.length - 1 ? ',' : '') + '\n');
+          });
+          parent.append(' '.repeat(indent) + ']');
+        } else if (value && typeof value === 'object') {
+          const entries = Object.entries(value);
+          if (!entries.length) return parent.append('{}');
+          parent.append('{\n');
+          entries.forEach(([key, child], i) => {
+            parent.append(pad + JSON.stringify(key) + ': ');
+            buildAnnotatedJSON(parent, child, indent + 2, [...path, key], event);
+            parent.append(i < entries.length - 1 ? ',' : '');
+            const note = annotation(event, [...path, key], child);
+            if (note !== undefined) {
+              const span = part('note', `  // ${note}`);
+              span.setAttribute('aria-hidden', 'true');
+              parent.append(span);
+            }
+            parent.append('\n');
+          });
+          parent.append(' '.repeat(indent) + '}');
+        } else {
+          parent.append(JSON.stringify(value));
+        }
       }
 
       function status(message, error = false) {
@@ -728,34 +868,32 @@ Waiting for a recording…</pre
         list.replaceChildren();
         // Keep the rendered list limited to the latest 300 matching events.
         for (const { event, index } of visible.slice(-300)) {
+          const row = document.createElement('div');
+          row.className = 'event';
           const button = document.createElement('button');
-          const label = eventLabel(event);
-          const target =
-            event.data && event.data.id !== undefined
-              ? ` · node ${event.data.id}`
-              : '';
-          button.textContent = `#${index + 1} +${
-            event.timestamp - events[0].timestamp
-          }ms ${label}${target}`;
-          button.setAttribute('aria-pressed', String(index === selected));
+          button.append(...summaryParts(event, index));
+          button.setAttribute('aria-expanded', String(index === selected));
           button.onclick = () => {
-            selected = index;
+            selected = index === selected ? -1 : index;
             render();
           };
-          list.append(button);
+          row.append(button);
+          if (index === selected) {
+            const json = document.createElement('pre');
+            json.className = 'event-json';
+            json.tabIndex = 0;
+            json.setAttribute('aria-label', 'Selected event JSON');
+            buildAnnotatedJSON(json, event, 0, [], event);
+            row.append(json);
+          }
+          list.append(row);
         }
         list.scrollTop = scrollToLatest ? list.scrollHeight : previousScrollTop;
         scrollToLatest = false;
-        $('detail').textContent =
-          selected < 0
-            ? 'No event selected.'
-            : JSON.stringify(events[selected], null, 2);
       }
       function capture(event) {
         events.push(event);
-        if (matches(event)) scrollToLatest = true;
-        if (selected < 0 || (event.type === 2 && events[selected].type !== 2))
-          selected = events.length - 1;
+        if (matches(event) && selected < 0) scrollToLatest = true;
         if (!renderPending) {
           renderPending = true;
           requestAnimationFrame(render);
@@ -773,14 +911,14 @@ Waiting for a recording…</pre
             options.ignoreCSSAttributes = new Set(options.ignoreCSSAttributes);
         } catch (error) {
           status(`Cannot apply settings: ${error.message}`, true);
-          return;
+          return false;
         }
         if (location.protocol === 'file:') {
           status(
             'Serve the repository over HTTP: python3 -m http.server 8000, then open this page through localhost:8000.',
             true,
           );
-          return;
+          return false;
         }
         formPage = page;
         for (const link of formLinks) {
@@ -834,8 +972,11 @@ Waiting for a recording…</pre
           doc.head.append(script);
         };
         frame.src = `${page}?session=${current}`;
+        return true;
       }
-      $('apply').onclick = () => restart();
+      $('apply').onclick = () => {
+        if (restart()) $('settings').open = false;
+      };
       for (const link of formLinks) {
         link.onclick = (event) => {
           if (
