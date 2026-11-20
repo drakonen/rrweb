@@ -1479,7 +1479,7 @@
             (value[0] === '{' || value[0] === '[') &&
             collapsedPaths.has(range.path.join('.'));
           if (folded) dimRange(range.start, range.end);
-          else if (
+          if (
             config &&
             isDefaultValue(
               range.path,
