@@ -1170,6 +1170,15 @@
           dataURLOptions: {},
         }),
       );
+      // Nested defaults for the reveal/hide controls: an absent flag in an
+      // explicit maskInputOptions/slimDOMOptions is off, so false reads as
+      // default (and greys); the rest carry rrweb's documented defaults.
+      for (const key of fields.keys())
+        if (/^(maskInputOptions|slimDOMOptions)\./.test(key))
+          optionDefaults.set(key, false);
+      optionDefaults.set('sampling.input', 'all');
+      optionDefaults.set('sampling.mouseInteraction', true);
+      optionDefaults.set('dataURLOptions.type', 'image/png');
       function isDefaultValue(path, value) {
         const key = path.join('.');
         return (
@@ -1181,9 +1190,9 @@
       // password-only default; a presented default that differs from rrweb's
       // is shown expanded so the difference is visible.
       function presentedDefaults() {
-        const config = JSON.parse(
-          JSON.stringify(Object.fromEntries(optionDefaults)),
-        );
+        const config = {};
+        for (const [key, value] of optionDefaults)
+          if (!key.includes('.')) config[key] = structuredClone(value);
         config.maskInputOptions = Object.fromEntries(
           inputTypes.map((type) => [type, true]),
         );
@@ -1205,7 +1214,7 @@
       function annotationNotes(config, path, value) {
         const notes = [];
         const key = path.join('.');
-        if (optionDefaults.has(key)) {
+        if (path.length === 1 && optionDefaults.has(key)) {
           const fallback = optionDefaults.get(key);
           if (
             JSON.stringify(value) !== JSON.stringify(fallback) &&
@@ -1213,12 +1222,8 @@
           )
             notes.push(`default: ${JSON.stringify(fallback)}`);
         }
-        if (key === 'maskAllInputs') {
-          if (value === false)
-            notes.push('no effect: false is the same as unset');
-          else if (value === true && config.maskInputOptions !== undefined)
-            notes.push('maskInputOptions is ignored');
-        }
+        if (key === 'maskInputOptions' && config.maskAllInputs === true)
+          notes.push('overridden by maskAllInputs: true');
         return notes.length ? `  // ${notes.join(' · ')}` : '';
       }
       function formatConfig(config) {
@@ -1367,8 +1372,27 @@
         value([]);
         return ranges;
       }
+      const schemaObjects = [
+        'maskInputOptions',
+        'sampling',
+        'slimDOMOptions',
+        'dataURLOptions',
+      ];
+      function knownChildren(parent) {
+        const prefix = `${parent}.`;
+        return [...fields.keys()]
+          .filter((key) => key.startsWith(prefix))
+          .map((key) => key.slice(prefix.length))
+          .filter((key) => !key.includes('.'));
+      }
+      function childDefault(parent, child) {
+        const key = `${parent}.${child}`;
+        return optionDefaults.has(key)
+          ? structuredClone(optionDefaults.get(key))
+          : structuredClone(fields.get(key)?.example);
+      }
       let renderedGutterJSON;
-      function renderGutter(ranges) {
+      function renderGutter(config, ranges) {
         const source = ranges ? editor.value : undefined;
         if (renderedGutterJSON === source) return;
         renderedGutterJSON = source;
@@ -1392,35 +1416,71 @@
           const value = editor.value.slice(range.start, range.end);
           const name = range.path.join('.');
           if (value[0] === '{' || value[0] === '[') {
-            if (/^[{[]\s*[}\]]$/.test(value)) continue;
+            const empty = /^[{[]\s*[}\]]$/.test(value);
+            const isSchema =
+              range.path.length === 1 && schemaObjects.includes(name);
+            if (empty && !isSchema) continue;
             const expanded = value.includes('\n');
+            const folded = collapsedPaths.has(name);
+            const current = (config && config[name]) || {};
+            const children = isSchema ? knownChildren(name) : [];
+            const allKnownPresent =
+              isSchema &&
+              children.length > 0 &&
+              children.every((child) => Object.hasOwn(current, child));
+            // Schema objects reveal (+) or hide/fold (−) their known
+            // sub-options; other objects just fold their existing contents.
+            const showMinus = isSchema
+              ? !folded && allKnownPresent
+              : expanded;
             const fold = document.createElement('button');
             fold.type = 'button';
             fold.className = 'fold';
-            fold.textContent = expanded ? '−' : '+';
-            fold.setAttribute('aria-expanded', String(expanded));
-            fold.setAttribute(
-              'aria-label',
-              `${expanded ? 'Collapse' : 'Expand'} ${name}`,
-            );
-            fold.title = `${expanded ? 'Collapse' : 'Expand'} ${name}`;
+            fold.textContent = showMinus ? '−' : '+';
+            fold.setAttribute('aria-expanded', String(!folded && expanded));
+            const verb = isSchema
+              ? showMinus
+                ? 'Hide default options of'
+                : 'Show all options of'
+              : showMinus
+              ? 'Collapse'
+              : 'Expand';
+            fold.setAttribute('aria-label', `${verb} ${name}`);
+            fold.title = `${verb} ${name}`;
             fold.onclick = () => {
-              let config;
+              let next;
               try {
-                config = readConfig();
+                next = readConfig();
               } catch {
                 return;
               }
-              if (expanded) collapsedPaths.add(name);
-              else collapsedPaths.delete(name);
+              if (!isSchema) {
+                if (expanded) collapsedPaths.add(name);
+                else collapsedPaths.delete(name);
+              } else if (folded) {
+                collapsedPaths.delete(name);
+              } else if (allKnownPresent) {
+                const before = JSON.stringify(next[name]);
+                for (const child of children)
+                  if (isDefaultValue([name, child], next[name]?.[child]))
+                    delete next[name][child];
+                if (JSON.stringify(next[name]) === before)
+                  collapsedPaths.add(name);
+              } else {
+                collapsedPaths.delete(name);
+                next[name] = next[name] || {};
+                for (const child of children)
+                  if (!Object.hasOwn(next[name], child))
+                    next[name][child] = childDefault(name, child);
+              }
               const scrollTop = editor.scrollTop;
-              editor.value = formatConfig(config);
+              editor.value = formatConfig(next);
               updateEditor();
               editor.scrollTop = scrollTop;
               syncGutterScroll();
             };
             place(fold, line);
-            if (!expanded) collapsedLines.add(line);
+            if (!empty && !expanded) collapsedLines.add(line);
             continue;
           }
           if (value !== 'true' && value !== 'false') continue;
@@ -1553,7 +1613,7 @@
         $('format-config').hidden =
           !config || formatConfig(config) === editor.value;
         const ranges = config ? propertyRanges() : undefined;
-        renderGutter(ranges);
+        renderGutter(config, ranges);
         renderHighlight(config, ranges);
         if (!config) return;
         const cursor = editor.selectionStart;
