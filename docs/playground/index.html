@@ -83,6 +83,7 @@
         position: absolute;
         top: 8px;
         right: 8px;
+        z-index: 2;
         padding: 4px 9px;
         border-color: #51607a;
         background: #1d3049;
@@ -121,6 +122,22 @@
         color: #dce8f5;
         font: 12px/14px monospace;
       }
+      #editor-stack {
+        position: relative;
+        display: flex;
+        flex: 1;
+        min-width: 0;
+      }
+      #config,
+      #config-highlight {
+        margin: 0;
+        padding: 12px;
+        border: 0;
+        font: 13px/21px monospace;
+        tab-size: 2;
+        white-space: pre;
+        overflow-wrap: normal;
+      }
       #config {
         display: block;
         flex: 1;
@@ -128,12 +145,25 @@
         width: 100%;
         min-height: 440px;
         resize: vertical;
-        padding: 12px;
-        border: 0;
+        position: relative;
+        z-index: 1;
+        background: transparent;
+        color: transparent;
+        caret-color: #dce8f5;
+      }
+      #config::selection {
+        background: #35507a;
+      }
+      #config-highlight {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
         background: #142235;
         color: #dce8f5;
-        font: 13px/21px monospace;
-        tab-size: 2;
+      }
+      #config-highlight .dim {
+        color: #6f7f99;
       }
       #config-error {
         color: var(--error);
@@ -494,12 +524,15 @@
         >
         <div class="config-editor">
           <div id="editor-gutter"><div id="gutter-controls"></div></div>
-          <textarea
-            id="config"
-            spellcheck="false"
-            wrap="off"
-            aria-describedby="config-help config-error"
-          ></textarea>
+          <div id="editor-stack">
+            <pre id="config-highlight" aria-hidden="true"></pre>
+            <textarea
+              id="config"
+              spellcheck="false"
+              wrap="off"
+              aria-describedby="config-help config-error"
+            ></textarea>
+          </div>
           <button id="format-config" hidden>Format JSON</button>
         </div>
         <p id="config-error" role="status" aria-live="polite"></p>
@@ -1131,8 +1164,20 @@
           collectFonts: false,
           inlineImages: false,
           mousemoveWait: 50,
+          ignoreCSSAttributes: [],
+          maskInputOptions: { password: true },
+          sampling: {},
+          slimDOMOptions: {},
+          dataURLOptions: {},
         }),
       );
+      function isDefaultValue(path, value) {
+        const key = path.join('.');
+        return (
+          optionDefaults.has(key) &&
+          JSON.stringify(value) === JSON.stringify(optionDefaults.get(key))
+        );
+      }
       const collapsedPaths = new Set(['maskInputOptions']);
       function summarize(value) {
         if (Array.isArray(value))
@@ -1151,7 +1196,10 @@
         const key = path.join('.');
         if (optionDefaults.has(key)) {
           const fallback = optionDefaults.get(key);
-          if (JSON.stringify(value) !== JSON.stringify(fallback))
+          if (
+            JSON.stringify(value) !== JSON.stringify(fallback) &&
+            (fallback === null || typeof fallback !== 'object')
+          )
             notes.push(`default: ${JSON.stringify(fallback)}`);
         }
         if (key === 'maskAllInputs') {
@@ -1401,7 +1449,66 @@
           'gutter-controls',
         ).style.transform = `translateY(${-editor.scrollTop}px)`;
       }
+      function syncEditorScroll() {
+        const highlight = $('config-highlight');
+        highlight.scrollTop = editor.scrollTop;
+        highlight.scrollLeft = editor.scrollLeft;
+      }
+      const escapeHtml = (text) =>
+        text.replace(
+          /[&<>]/g,
+          (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char]),
+        );
+      let highlightedJSON;
+      function renderHighlight(config, ranges) {
+        const text = editor.value;
+        if (highlightedJSON === text) return syncEditorScroll();
+        highlightedJSON = text;
+        const dim = new Array(text.length).fill(false);
+        const dimRange = (from, to) => {
+          for (let i = from; i < to; i++) dim[i] = true;
+        };
+        for (const match of text.matchAll(
+          /("(?:[^"\\]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+        ))
+          if (match[1] === undefined)
+            dimRange(match.index, match.index + match[0].length);
+        for (const range of ranges || []) {
+          const value = text.slice(range.start, range.end);
+          const folded =
+            (value[0] === '{' || value[0] === '[') &&
+            collapsedPaths.has(range.path.join('.'));
+          if (folded) dimRange(range.start, range.end);
+          else if (
+            config &&
+            isDefaultValue(
+              range.path,
+              range.path.reduce((node, key) => node?.[key], config),
+            )
+          )
+            dimRange(range.keyStart, range.end);
+        }
+        let html = '';
+        let run = '';
+        let runDim = false;
+        const flush = () => {
+          if (!run) return;
+          html += runDim ? `<span class="dim">${escapeHtml(run)}</span>` : escapeHtml(run);
+          run = '';
+        };
+        for (let i = 0; i < text.length; i++) {
+          if (dim[i] !== runDim) {
+            flush();
+            runDim = dim[i];
+          }
+          run += text[i];
+        }
+        flush();
+        $('config-highlight').innerHTML = html + '\n';
+        syncEditorScroll();
+      }
       editor.addEventListener('scroll', syncGutterScroll);
+      editor.addEventListener('scroll', syncEditorScroll);
       $('editor-gutter').addEventListener(
         'wheel',
         (event) => {
@@ -1436,6 +1543,7 @@
           !config || formatConfig(config) === editor.value;
         const ranges = config ? propertyRanges() : undefined;
         renderGutter(ranges);
+        renderHighlight(config, ranges);
         if (!config) return;
         const picker = $('add-option');
         const previous = picker.value;
