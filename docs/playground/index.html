@@ -176,10 +176,6 @@
       #field-tools code {
         flex-basis: 100%;
       }
-      #add-option {
-        min-width: 0;
-        max-width: 100%;
-      }
       .iframe-shell {
         overflow: hidden;
         border: 1px solid var(--border);
@@ -498,9 +494,11 @@
         load the latest events to include new interactions.
       </p>
       <p id="config-help">
-        Removing an option uses rrweb's default. Added values are editable
-        examples. <code>//</code> and <code>/* */</code> comments are
-        informational and ignored when settings are applied; the gutter's
+        Every recorder option is listed from the start. Options at their
+        rrweb default are greyed; edit any value in place, or delete an
+        option's line to fall back to its default.
+        <code>//</code> and <code>/* */</code> comments are informational
+        and ignored when settings are applied; the gutter's
         <code>+</code>/<code>−</code> buttons fold an option's contents onto
         one line. <code>ignoreCSSAttributes</code> accepts an array of strings.
         The playground supplies <code>emit</code>; callbacks, plugins, and
@@ -542,9 +540,6 @@
           aria-label="Selected field controls"
         ></div>
         <div class="toolbar">
-          <label for="add-option">Add option</label>
-          <select id="add-option"></select>
-          <button id="add-field">Add</button>
           <button class="primary" id="apply">Apply &amp; restart</button>
         </div>
         </details>
@@ -1057,8 +1052,9 @@
       }
       $('filter').onchange = render;
       const editor = $('config');
-      // This catalog supplies add-option examples and controls. Unknown JSON
-      // fields remain intact, so newer recorder options can still be entered.
+      // This catalog supplies validation types and field-tools controls.
+      // Unknown JSON fields remain intact, so newer recorder options can
+      // still be entered.
       const fields = new Map();
       function field(path, example, types = [typeof example], choices) {
         fields.set(path, { example, types, choices });
@@ -1076,13 +1072,16 @@
         field(name, ['inlineStylesheet', 'recordDOM'].includes(name));
       for (const [name, example] of Object.entries({
         blockClass: 'rr-block',
-        blockSelector: '.private',
         ignoreClass: 'rr-ignore',
-        ignoreSelector: '.ignored',
         maskTextClass: 'rr-mask',
-        maskTextSelector: '.sensitive',
       }))
         field(name, example);
+      for (const [name, example] of Object.entries({
+        blockSelector: '.private',
+        ignoreSelector: '.ignored',
+        maskTextSelector: '.sensitive',
+      }))
+        field(name, example, ['string', 'null']);
       for (const name of [
         'checkoutEveryNth',
         'checkoutEveryNms',
@@ -1178,7 +1177,19 @@
           JSON.stringify(value) === JSON.stringify(optionDefaults.get(key))
         );
       }
-      const collapsedPaths = new Set(['maskInputOptions']);
+      // The playground deliberately masks every input type, unlike rrweb's
+      // password-only default; a presented default that differs from rrweb's
+      // is shown expanded so the difference is visible.
+      function presentedDefaults() {
+        const config = JSON.parse(
+          JSON.stringify(Object.fromEntries(optionDefaults)),
+        );
+        config.maskInputOptions = Object.fromEntries(
+          inputTypes.map((type) => [type, true]),
+        );
+        return config;
+      }
+      const collapsedPaths = new Set();
       function summarize(value) {
         if (Array.isArray(value))
           return `${value.length} item${value.length === 1 ? '' : 's'}`;
@@ -1537,7 +1548,7 @@
           $('config-error').textContent = error.message;
           editor.setAttribute('aria-invalid', 'true');
         }
-        for (const id of ['apply', 'format-config', 'add-field', 'add-option'])
+        for (const id of ['apply', 'format-config'])
           $(id).disabled = !config;
         $('format-config').hidden =
           !config || formatConfig(config) === editor.value;
@@ -1545,36 +1556,6 @@
         renderGutter(ranges);
         renderHighlight(config, ranges);
         if (!config) return;
-        const picker = $('add-option');
-        const previous = picker.value;
-        picker.replaceChildren();
-        for (const path of fields.keys()) {
-          let target = config;
-          const keys = path.split('.');
-          const key = keys.pop();
-          for (const part of keys) {
-            if (target === undefined) break;
-            target =
-              target !== null &&
-              typeof target === 'object' &&
-              !Array.isArray(target)
-                ? target[part]
-                : null;
-          }
-          // Never replace an existing scalar parent just to add a child.
-          if (
-            target === null ||
-            (target !== undefined &&
-              (typeof target !== 'object' ||
-                Array.isArray(target) ||
-                Object.hasOwn(target, key)))
-          )
-            continue;
-          picker.add(new Option(path, path));
-        }
-        if ([...picker.options].some((option) => option.value === previous))
-          picker.value = previous;
-        $('add-field').disabled = picker.options.length === 0;
         const cursor = editor.selectionStart;
         const selectedField = ranges
           .filter((range) => cursor >= range.keyStart && cursor <= range.end)
@@ -1648,22 +1629,13 @@
         updateEditor();
         status('Settings changed — Apply & restart to use them.');
       }
-      editor.value = formatConfig({
-        maskInputOptions: Object.fromEntries(
-          inputTypes.map((type) => [type, true]),
-        ),
-        sampling: { mousemove: true, mouseInteraction: true, input: 'all' },
-      });
+      editor.value = formatConfig(presentedDefaults());
       editor.addEventListener('input', () => {
         updateEditor();
         status('Settings changed — Apply & restart to use them.');
       });
       for (const event of ['click', 'keyup', 'select'])
         editor.addEventListener(event, updateEditor);
-      $('add-field').onclick = () => {
-        const path = $('add-option').value;
-        if (path) changeField(path.split('.'), fields.get(path).example);
-      };
       $('format-config').onclick = () => {
         editor.value = formatConfig(readConfig());
         updateEditor();
