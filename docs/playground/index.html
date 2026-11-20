@@ -78,23 +78,34 @@
         overflow: hidden;
         background: #142235;
       }
-      #boolean-gutter {
+      #editor-gutter {
         position: relative;
         flex: 0 0 28px;
         overflow: clip;
         border-right: 1px solid var(--muted);
       }
-      #boolean-toggles {
+      #gutter-controls {
         position: absolute;
         inset: 0;
       }
-      #boolean-toggles input {
+      #gutter-controls input {
         position: absolute;
         width: 16px;
         height: 16px;
         margin: 0;
         accent-color: #80b4fa;
         cursor: pointer;
+      }
+      #gutter-controls .fold {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        padding: 0;
+        border: 1px solid #51607a;
+        border-radius: 3px;
+        background: #1d3049;
+        color: #dce8f5;
+        font: 12px/14px monospace;
       }
       #config {
         display: block;
@@ -444,7 +455,10 @@
       </p>
       <p id="config-help">
         Removing an option uses rrweb's default. Added values are editable
-        examples. <code>ignoreCSSAttributes</code> accepts an array of strings.
+        examples. <code>//</code> and <code>/* */</code> comments are
+        informational and ignored when settings are applied; the gutter's
+        <code>+</code>/<code>−</code> buttons fold an option's contents onto
+        one line. <code>ignoreCSSAttributes</code> accepts an array of strings.
         The playground supplies <code>emit</code>; callbacks, plugins, and
         regular expressions require JavaScript and cannot be configured here.
       </p>
@@ -465,7 +479,7 @@
           >Docs ↗</a
         >
         <div class="config-editor">
-          <div id="boolean-gutter"><div id="boolean-toggles"></div></div>
+          <div id="editor-gutter"><div id="gutter-controls"></div></div>
           <textarea
             id="config"
             spellcheck="false"
@@ -1080,8 +1094,94 @@
       field('dataURLOptions.type', 'image/webp');
       field('dataURLOptions.quality', 0.8);
 
+      // Defaults mirror packages/rrweb/src/record/index.ts (and
+      // slimDOMDefaults in rrweb-snapshot); update together.
+      const optionDefaults = new Map(
+        Object.entries({
+          maskAllInputs: false,
+          blockClass: 'rr-block',
+          blockSelector: null,
+          ignoreClass: 'rr-ignore',
+          ignoreSelector: null,
+          maskTextClass: 'rr-mask',
+          maskTextSelector: null,
+          inlineStylesheet: true,
+          recordDOM: true,
+          recordCanvas: false,
+          recordCrossOriginIframes: false,
+          recordAfter: 'load',
+          userTriggeredOnInput: false,
+          collectFonts: false,
+          inlineImages: false,
+          mousemoveWait: 50,
+        }),
+      );
+      const collapsedPaths = new Set(['maskInputOptions']);
+      function summarize(value) {
+        if (Array.isArray(value))
+          return `${value.length} item${value.length === 1 ? '' : 's'}`;
+        const entries = Object.values(value);
+        if (entries.length && entries.every((v) => typeof v === 'boolean')) {
+          const on = entries.filter(Boolean).length;
+          return on === entries.length
+            ? `all ${on} on`
+            : `${on} on, ${entries.length - on} off`;
+        }
+        return `${entries.length} option${entries.length === 1 ? '' : 's'}`;
+      }
+      function defaultNote(path, value) {
+        const key = path.join('.');
+        if (!optionDefaults.has(key)) return '';
+        const fallback = optionDefaults.get(key);
+        return JSON.stringify(value) === JSON.stringify(fallback)
+          ? ''
+          : `  // default: ${JSON.stringify(fallback)}`;
+      }
+      function formatConfig(config) {
+        function write(value, indent, path) {
+          if (!value || typeof value !== 'object') return JSON.stringify(value);
+          const entries = Object.entries(value);
+          if (!entries.length) return Array.isArray(value) ? '[]' : '{}';
+          if (path.length && collapsedPaths.has(path.join('.')))
+            return `/* ${summarize(value)} */ ${JSON.stringify(value)}`;
+          const pad = ' '.repeat(indent + 2);
+          const close = ' '.repeat(indent);
+          if (Array.isArray(value))
+            return `[\n${value
+              .map(
+                (item, i) =>
+                  pad +
+                  write(item, indent + 2, [...path, i]) +
+                  (i < value.length - 1 ? ',' : ''),
+              )
+              .join('\n')}\n${close}]`;
+          return `{\n${entries
+            .map(([key, child], i) => {
+              const childPath = [...path, key];
+              return (
+                pad +
+                JSON.stringify(key) +
+                ': ' +
+                write(child, indent + 2, childPath) +
+                (i < entries.length - 1 ? ',' : '') +
+                defaultNote(childPath, child)
+              );
+            })
+            .join('\n')}\n${close}}`;
+        }
+        return write(config, 0, []);
+      }
+      // Comments become same-length whitespace so character offsets and
+      // line numbers still line up with the editor text.
+      function stripComments(text) {
+        return text.replace(
+          /("(?:[^"\\]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+          (match, string) => string ?? match.replace(/[^\n]/g, ' '),
+        );
+      }
+
       function readConfig() {
-        const config = JSON.parse(editor.value);
+        const config = JSON.parse(stripComments(editor.value));
         const kind = (value) =>
           value === null
             ? 'null'
@@ -1134,11 +1234,12 @@
         return config;
       }
 
-      // Locate properties using JSON tokens, so escaped strings, nested objects
-      // and repeated keys in different objects resolve to the correct field.
+      // Locate properties using JSON tokens (comments stripped first), so
+      // escaped strings, nested objects and repeated keys in different
+      // objects resolve to the correct field.
       function propertyRanges() {
         const tokens = Array.from(
-          editor.value.matchAll(
+          stripComments(editor.value).matchAll(
             /"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null|[{}[\]:,]/g,
           ),
         );
@@ -1182,37 +1283,75 @@
         value([]);
         return ranges;
       }
-      let renderedBooleanJSON;
-      function renderBooleanCheckboxes(ranges) {
+      let renderedGutterJSON;
+      function renderGutter(ranges) {
         const source = ranges ? editor.value : undefined;
-        if (renderedBooleanJSON === source) return;
-        renderedBooleanJSON = source;
-        const toggles = $('boolean-toggles');
-        toggles.replaceChildren();
+        if (renderedGutterJSON === source) return;
+        renderedGutterJSON = source;
+        const controls = $('gutter-controls');
+        controls.replaceChildren();
         const columns = new Map();
+        const collapsedLines = new Set();
         let width = 28;
-        for (const range of (ranges || []).sort((a, b) => a.start - b.start)) {
-          const value = editor.value.slice(range.start, range.end);
-          if (value !== 'true' && value !== 'false') continue;
-          const line =
-            editor.value.slice(0, range.start).split('\n').length - 1;
+        function place(control, line) {
           const column = columns.get(line) || 0;
           columns.set(line, column + 1);
           width = Math.max(width, (column + 1) * 24 + 4);
+          control.style.top = `${12 + line * 21 + 2}px`;
+          control.style.left = `${6 + column * 24}px`;
+          controls.append(control);
+        }
+        for (const range of (ranges || []).sort((a, b) => a.start - b.start)) {
+          const line =
+            editor.value.slice(0, range.start).split('\n').length - 1;
+          if (collapsedLines.has(line)) continue;
+          const value = editor.value.slice(range.start, range.end);
+          const name = range.path.join('.');
+          if (value[0] === '{' || value[0] === '[') {
+            if (/^[{[]\s*[}\]]$/.test(value)) continue;
+            const expanded = value.includes('\n');
+            const fold = document.createElement('button');
+            fold.type = 'button';
+            fold.className = 'fold';
+            fold.textContent = expanded ? '−' : '+';
+            fold.setAttribute('aria-expanded', String(expanded));
+            fold.setAttribute(
+              'aria-label',
+              `${expanded ? 'Collapse' : 'Expand'} ${name}`,
+            );
+            fold.title = `${expanded ? 'Collapse' : 'Expand'} ${name}`;
+            fold.onclick = () => {
+              let config;
+              try {
+                config = readConfig();
+              } catch {
+                return;
+              }
+              if (expanded) collapsedPaths.add(name);
+              else collapsedPaths.delete(name);
+              const scrollTop = editor.scrollTop;
+              editor.value = formatConfig(config);
+              updateEditor();
+              editor.scrollTop = scrollTop;
+              syncGutterScroll();
+            };
+            place(fold, line);
+            if (!expanded) collapsedLines.add(line);
+            continue;
+          }
+          if (value !== 'true' && value !== 'false') continue;
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.checked = value === 'true';
           checkbox.dataset.start = range.start;
-          checkbox.setAttribute('aria-label', range.path.join('.'));
-          checkbox.title = `${range.path.join('.')}: ${value}`;
-          checkbox.style.top = `${12 + line * 21 + 2}px`;
-          checkbox.style.left = `${6 + column * 24}px`;
+          checkbox.setAttribute('aria-label', name);
+          checkbox.title = `${name}: ${value}`;
           checkbox.onfocus = () => {
             const top = 12 + line * 21;
             if (top < editor.scrollTop) editor.scrollTop = top;
             else if (top + 21 > editor.scrollTop + editor.clientHeight)
               editor.scrollTop = top + 21 - editor.clientHeight;
-            syncBooleanScroll();
+            syncGutterScroll();
           };
           checkbox.onchange = () => {
             // Replace just this token, preserving the rest of the JSON text.
@@ -1223,22 +1362,22 @@
               'preserve',
             );
             editor.dispatchEvent(new Event('input'));
-            toggles
+            controls
               .querySelector(`[data-start="${range.start}"]`)
               ?.focus({ preventScroll: true });
           };
-          toggles.append(checkbox);
+          place(checkbox, line);
         }
-        $('boolean-gutter').style.flexBasis = `${width}px`;
-        syncBooleanScroll();
+        $('editor-gutter').style.flexBasis = `${width}px`;
+        syncGutterScroll();
       }
-      function syncBooleanScroll() {
+      function syncGutterScroll() {
         $(
-          'boolean-toggles',
+          'gutter-controls',
         ).style.transform = `translateY(${-editor.scrollTop}px)`;
       }
-      editor.addEventListener('scroll', syncBooleanScroll);
-      $('boolean-gutter').addEventListener(
+      editor.addEventListener('scroll', syncGutterScroll);
+      $('editor-gutter').addEventListener(
         'wheel',
         (event) => {
           if (event.ctrlKey) return;
@@ -1269,7 +1408,7 @@
         for (const id of ['apply', 'format-config', 'add-field', 'add-option'])
           $(id).disabled = !config;
         const ranges = config ? propertyRanges() : undefined;
-        renderBooleanCheckboxes(ranges);
+        renderGutter(ranges);
         if (!config) return;
         const picker = $('add-option');
         const previous = picker.value;
@@ -1365,7 +1504,7 @@
             configurable: true,
             writable: true,
           });
-        editor.value = JSON.stringify(config, null, 2);
+        editor.value = formatConfig(config);
         const range = propertyRanges().find(
           (range) => JSON.stringify(range.path) === JSON.stringify(path),
         );
@@ -1374,16 +1513,12 @@
         updateEditor();
         status('Settings changed — Apply & restart to use them.');
       }
-      editor.value = JSON.stringify(
-        {
-          maskInputOptions: Object.fromEntries(
-            inputTypes.map((type) => [type, true]),
-          ),
-          sampling: { mousemove: true, mouseInteraction: true, input: 'all' },
-        },
-        null,
-        2,
-      );
+      editor.value = formatConfig({
+        maskInputOptions: Object.fromEntries(
+          inputTypes.map((type) => [type, true]),
+        ),
+        sampling: { mousemove: true, mouseInteraction: true, input: 'all' },
+      });
       editor.addEventListener('input', () => {
         updateEditor();
         status('Settings changed — Apply & restart to use them.');
@@ -1395,7 +1530,7 @@
         if (path) changeField(path.split('.'), fields.get(path).example);
       };
       $('format-config').onclick = () => {
-        editor.value = JSON.stringify(readConfig(), null, 2);
+        editor.value = formatConfig(readConfig());
         updateEditor();
       };
       updateEditor();
