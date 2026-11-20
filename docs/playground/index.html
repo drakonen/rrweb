@@ -72,11 +72,25 @@
       }
       .config-editor {
         display: flex;
+        position: relative;
         margin-top: 8px;
         border: 1px solid var(--border);
         border-radius: 5px;
         overflow: hidden;
         background: #142235;
+      }
+      #format-config {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 4px 9px;
+        border-color: #51607a;
+        background: #1d3049;
+        color: #dce8f5;
+        font-size: 12px;
+      }
+      #apply {
+        margin-left: auto;
       }
       #editor-gutter {
         position: relative;
@@ -486,6 +500,7 @@
             wrap="off"
             aria-describedby="config-help config-error"
           ></textarea>
+          <button id="format-config" hidden>Format JSON</button>
         </div>
         <p id="config-error" role="status" aria-live="polite"></p>
         <div
@@ -497,10 +512,7 @@
           <label for="add-option">Add option</label>
           <select id="add-option"></select>
           <button id="add-field">Add</button>
-        </div>
-        <div class="toolbar">
           <button class="primary" id="apply">Apply &amp; restart</button>
-          <button id="format-config">Format JSON</button>
         </div>
         </details>
       </section>
@@ -873,6 +885,8 @@
         renderRawJSON();
         const list = $('event-list');
         const previousScrollTop = list.scrollTop;
+        const pinnedToLatest =
+          list.scrollTop + list.clientHeight >= list.scrollHeight - 30;
         const visible = events
           .map((event, index) => ({ event, index }))
           .filter(({ event }) => matches(event));
@@ -902,12 +916,15 @@
           }
           list.append(row);
         }
-        list.scrollTop = scrollToLatest ? list.scrollHeight : previousScrollTop;
+        list.scrollTop =
+          scrollToLatest && pinnedToLatest
+            ? list.scrollHeight
+            : previousScrollTop;
         scrollToLatest = false;
       }
       function capture(event) {
         events.push(event);
-        if (matches(event) && selected < 0) scrollToLatest = true;
+        scrollToLatest = true;
         if (!renderPending) {
           renderPending = true;
           requestAnimationFrame(render);
@@ -1407,6 +1424,8 @@
         }
         for (const id of ['apply', 'format-config', 'add-field', 'add-option'])
           $(id).disabled = !config;
+        $('format-config').hidden =
+          !config || formatConfig(config) === editor.value;
         const ranges = config ? propertyRanges() : undefined;
         renderGutter(ranges);
         if (!config) return;
