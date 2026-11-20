@@ -1146,13 +1146,21 @@
         }
         return `${entries.length} option${entries.length === 1 ? '' : 's'}`;
       }
-      function defaultNote(path, value) {
+      function annotationNotes(config, path, value) {
+        const notes = [];
         const key = path.join('.');
-        if (!optionDefaults.has(key)) return '';
-        const fallback = optionDefaults.get(key);
-        return JSON.stringify(value) === JSON.stringify(fallback)
-          ? ''
-          : `  // default: ${JSON.stringify(fallback)}`;
+        if (optionDefaults.has(key)) {
+          const fallback = optionDefaults.get(key);
+          if (JSON.stringify(value) !== JSON.stringify(fallback))
+            notes.push(`default: ${JSON.stringify(fallback)}`);
+        }
+        if (key === 'maskAllInputs') {
+          if (value === false)
+            notes.push('no effect: false is the same as unset');
+          else if (value === true && config.maskInputOptions !== undefined)
+            notes.push('maskInputOptions is ignored');
+        }
+        return notes.length ? `  // ${notes.join(' · ')}` : '';
       }
       function formatConfig(config) {
         function write(value, indent, path) {
@@ -1181,7 +1189,7 @@
                 ': ' +
                 write(child, indent + 2, childPath) +
                 (i < entries.length - 1 ? ',' : '') +
-                defaultNote(childPath, child)
+                annotationNotes(config, childPath, child)
               );
             })
             .join('\n')}\n${close}}`;
