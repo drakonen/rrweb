@@ -541,6 +541,7 @@
         ></div>
         <div class="toolbar">
           <button class="primary" id="apply">Apply &amp; restart</button>
+          <button id="copy-options">Copy changed options</button>
         </div>
         </details>
       </section>
@@ -1170,25 +1171,38 @@
           dataURLOptions: {},
         }),
       );
-      // Nested defaults for the reveal/hide controls: an absent flag in an
-      // explicit maskInputOptions/slimDOMOptions is off, so false reads as
-      // default (and greys); the rest carry rrweb's documented defaults.
       for (const key of fields.keys())
         if (/^(maskInputOptions|slimDOMOptions)\./.test(key))
           optionDefaults.set(key, false);
       optionDefaults.set('sampling.input', 'all');
       optionDefaults.set('sampling.mouseInteraction', true);
       optionDefaults.set('dataURLOptions.type', 'image/png');
+      function baselineValue(key) {
+        if (optionDefaults.has(key)) return optionDefaults.get(key);
+        const [parent, ...rest] = key.split('.');
+        if (rest.length && schemaObjects.includes(parent) && fields.has(key))
+          return fields.get(key).example;
+        return undefined;
+      }
       function isDefaultValue(path, value) {
-        const key = path.join('.');
+        const base = baselineValue(path.join('.'));
         return (
-          optionDefaults.has(key) &&
-          JSON.stringify(value) === JSON.stringify(optionDefaults.get(key))
+          base !== undefined && JSON.stringify(value) === JSON.stringify(base)
         );
       }
-      // The playground deliberately masks every input type, unlike rrweb's
-      // password-only default; a presented default that differs from rrweb's
-      // is shown expanded so the difference is visible.
+      function nonDefaultOptions(value, path = []) {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          const out = {};
+          for (const [key, child] of Object.entries(value)) {
+            const childPath = [...path, key];
+            if (isDefaultValue(childPath, child)) continue;
+            const kept = nonDefaultOptions(child, childPath);
+            if (kept !== undefined) out[key] = kept;
+          }
+          return Object.keys(out).length || path.length === 0 ? out : undefined;
+        }
+        return value;
+      }
       function presentedDefaults() {
         const config = {};
         for (const [key, value] of optionDefaults)
@@ -1224,6 +1238,22 @@
         }
         if (key === 'maskInputOptions' && config.maskAllInputs === true)
           notes.push('overridden by maskAllInputs: true');
+        if (key === 'mousemoveWait' && config.sampling?.mousemove !== undefined)
+          notes.push('overridden by sampling.mousemove');
+        if (
+          (key === 'sampling.canvas' || key === 'dataURLOptions') &&
+          config.recordCanvas !== true
+        )
+          notes.push('only used when recordCanvas is true');
+        if (
+          ['recordCanvas', 'inlineImages', 'collectFonts', 'inlineStylesheet'].includes(
+            key,
+          ) &&
+          config.recordDOM === false
+        )
+          notes.push('no effect while recordDOM is false');
+        if (key === 'checkoutEveryNms' || key === 'checkoutEveryNth')
+          notes.push('checkout occurs on the next event past the threshold');
         return notes.length ? `  // ${notes.join(' · ')}` : '';
       }
       function formatConfig(config) {
@@ -1260,8 +1290,6 @@
         }
         return write(config, 0, []);
       }
-      // Comments become same-length whitespace so character offsets and
-      // line numbers still line up with the editor text.
       function stripComments(text) {
         return text.replace(
           /("(?:[^"\\]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
@@ -1386,10 +1414,7 @@
           .filter((key) => !key.includes('.'));
       }
       function childDefault(parent, child) {
-        const key = `${parent}.${child}`;
-        return optionDefaults.has(key)
-          ? structuredClone(optionDefaults.get(key))
-          : structuredClone(fields.get(key)?.example);
+        return structuredClone(baselineValue(`${parent}.${child}`));
       }
       let renderedGutterJSON;
       function renderGutter(config, ranges) {
@@ -1428,11 +1453,7 @@
               isSchema &&
               children.length > 0 &&
               children.every((child) => Object.hasOwn(current, child));
-            // Schema objects reveal (+) or hide/fold (−) their known
-            // sub-options; other objects just fold their existing contents.
-            const showMinus = isSchema
-              ? !folded && allKnownPresent
-              : expanded;
+            const showMinus = isSchema ? !folded && allKnownPresent : expanded;
             const fold = document.createElement('button');
             fold.type = 'button';
             fold.className = 'fold';
@@ -1608,7 +1629,7 @@
           $('config-error').textContent = error.message;
           editor.setAttribute('aria-invalid', 'true');
         }
-        for (const id of ['apply', 'format-config'])
+        for (const id of ['apply', 'format-config', 'copy-options'])
           $(id).disabled = !config;
         $('format-config').hidden =
           !config || formatConfig(config) === editor.value;
@@ -1699,6 +1720,21 @@
       $('format-config').onclick = () => {
         editor.value = formatConfig(readConfig());
         updateEditor();
+      };
+      $('copy-options').onclick = async () => {
+        let config;
+        try {
+          config = readConfig();
+        } catch {
+          return;
+        }
+        const options = JSON.stringify(nonDefaultOptions(config), null, 2);
+        try {
+          await navigator.clipboard.writeText(options);
+          status('Copied your changed options to the clipboard.');
+        } catch {
+          status('Could not copy. Select the options text and copy it.', true);
+        }
       };
       updateEditor();
       window.addEventListener('beforeunload', stop);
