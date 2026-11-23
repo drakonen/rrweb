@@ -1341,6 +1341,12 @@
         }
         if (key === 'maskInputOptions' && config.maskAllInputs === true)
           notes.push('overridden by maskAllInputs: true');
+        if (
+          key === 'maskAllInputs' &&
+          value === false &&
+          config.maskInputOptions !== undefined
+        )
+          notes.push('false: input masking comes from maskInputOptions');
         if (key === 'mousemoveWait' && config.sampling?.mousemove !== undefined)
           notes.push('overridden by sampling.mousemove');
         if (
