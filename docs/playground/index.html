@@ -191,30 +191,6 @@
         border-radius: 8px;
         box-shadow: 0 2px 8px #18263612;
       }
-      .iframe-header {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 12px;
-        background: var(--page);
-        border-bottom: 1px solid var(--border);
-        color: var(--muted);
-        font-size: 12px;
-      }
-      .iframe-header span {
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-      .iframe-header a {
-        color: var(--brand);
-        font-family: monospace;
-      }
-      .iframe-header a[aria-current='page'] {
-        font-weight: 600;
-        text-decoration-thickness: 2px;
-      }
       iframe {
         display: block;
         width: 100%;
@@ -516,8 +492,8 @@
           <strong>Apply &amp; restart</strong>.
         </li>
         <li>
-          Interact with <strong>Form interactions</strong> or
-          <strong>DOM changes</strong>.
+          Interact with the <strong>Example page</strong> — fill the form or
+          use the <strong>DOM changes</strong> buttons.
         </li>
         <li>
           Select an event to inspect it, or open <strong>Raw JSON</strong> to
@@ -529,9 +505,9 @@
         </li>
       </ol>
       <p>
-        Applying settings or switching examples clears the captured events and
-        player and starts a new recording. Recording continues during playback;
-        load the latest events to include new interactions.
+        Applying settings clears the captured events and player and starts a
+        new recording. Recording continues during playback; load the latest
+        events to include new interactions.
       </p>
       <p id="config-help">
         Every recorder option is listed from the start. Options at their
@@ -582,23 +558,12 @@
         </details>
       </section>
       <section>
-        <h2>Live page</h2>
+        <h2>Example page</h2>
         <div class="iframe-shell">
-          <div class="iframe-header">
-            <span>Example</span>
-            <a
-              href="playground-form.html"
-              target="form-frame"
-              aria-current="page"
-            >
-              Form interactions
-            </a>
-            <a href="playground-dom.html" target="form-frame">DOM changes</a>
-          </div>
           <iframe
             id="form"
             name="form-frame"
-            title="Page being recorded"
+            title="Example page being recorded"
           ></iframe>
         </div>
       </section>
@@ -699,8 +664,7 @@
       } catch {}
 
       const frame = $('form');
-      const formLinks = document.querySelectorAll('.iframe-header a');
-      let formPage = 'playground-form.html';
+      const formPage = 'playground-form.html';
       const events = [];
       let stopRecording;
       let selected = -1;
@@ -1060,12 +1024,6 @@
           );
           return false;
         }
-        formPage = page;
-        for (const link of formLinks) {
-          if (link.getAttribute('href') === page)
-            link.setAttribute('aria-current', 'page');
-          else link.removeAttribute('aria-current');
-        }
         const current = ++generation;
         stop();
         clearPlayer();
@@ -1122,20 +1080,6 @@
       $('apply').onclick = () => {
         if (restart()) $('settings').open = false;
       };
-      for (const link of formLinks) {
-        link.onclick = (event) => {
-          if (
-            event.button !== 0 ||
-            event.ctrlKey ||
-            event.metaKey ||
-            event.shiftKey ||
-            event.altKey
-          )
-            return;
-          event.preventDefault();
-          restart(link.getAttribute('href'));
-        };
-      }
       const editor = $('config');
       // This catalog supplies validation types and field-tools controls.
       // Unknown JSON fields remain intact, so newer recorder options can
