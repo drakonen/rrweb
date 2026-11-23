@@ -767,6 +767,10 @@
                 autoPlay: false,
                 liveMode: playerLive,
                 showController: !playerLive,
+                // In live mode the recorder and replay run at once; without
+                // this the replay's focus() calls steal focus from the
+                // element you just clicked in the example page.
+                triggerFocus: !playerLive,
               },
             });
             if (playerLive) {
