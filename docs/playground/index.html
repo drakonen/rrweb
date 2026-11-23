@@ -562,7 +562,7 @@
               >Docs ↗</a
             >
             <div id="status" role="status" aria-live="polite">Loading…</div>
-            <button id="copy-options" hidden>Copy JSON</button>
+            <button id="copy-options" hidden>Copy record options</button>
           </summary>
         <div class="config-editor">
           <div id="editor-gutter"><div id="gutter-controls"></div></div>
@@ -1812,7 +1812,7 @@
           ? Object.keys(nonDefaultOptions(config)).length
           : 0;
         button.hidden = !count;
-        button.textContent = `Copy JSON (${count} change${
+        button.textContent = `Copy record options (${count} change${
           count === 1 ? '' : 's'
         } vs. default)`;
       }
@@ -1831,10 +1831,16 @@
           return;
         }
         const button = $('copy-options');
+        // A placeholder emit (a function, so this is a JS object literal, not
+        // JSON) to show it sits beside the options; added on copy only.
+        const emit = '  emit(event) {\n    console.log(event);\n  },';
+        const body = JSON.stringify(nonDefaultOptions(config), null, 2);
+        const recordOptions =
+          body === '{}'
+            ? `{\n${emit}\n}`
+            : body.replace(/\n\}$/, `,\n${emit}\n}`);
         try {
-          await navigator.clipboard.writeText(
-            JSON.stringify(nonDefaultOptions(config), null, 2),
-          );
+          await navigator.clipboard.writeText(recordOptions);
           button.textContent = 'Copied ✓';
           button.classList.add('copied');
           clearTimeout(copyResetTimer);
