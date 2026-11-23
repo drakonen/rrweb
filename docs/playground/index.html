@@ -266,6 +266,15 @@
         color: var(--muted);
         font-weight: 400;
       }
+      .linklike {
+        border: 0;
+        padding: 0;
+        background: none;
+        color: var(--brand);
+        text-decoration: underline;
+        cursor: pointer;
+        font: inherit;
+      }
       #player-host iframe {
         height: 550px;
       }
@@ -630,15 +639,13 @@
         >
           <div class="toolbar">
             <button id="live-toggle" aria-pressed="false">Live: off</button>
-            <button id="reload-player" hidden title="Rebuild the player from the full recording">
-              Reload
-            </button>
             <span
               id="player-status"
               class="muted"
               role="status"
               aria-live="polite"
             ></span>
+            <button id="add-events" class="linklike" hidden></button>
           </div>
           <div id="player-host"></div>
         </div>
@@ -709,16 +716,21 @@
         playerFrame = undefined;
         $('player-host').replaceChildren();
       }
-      function updateReloadButton() {
-        $('reload-player').hidden =
-          playerLive || !player || events.length <= playerLoadedCount;
+      function updateAddEvents() {
+        const pending = events.length - playerLoadedCount;
+        const show = !playerLive && player && pending > 0;
+        $('add-events').hidden = !show;
+        if (show)
+          $('add-events').textContent = `add ${pending} event${
+            pending === 1 ? '' : 's'
+          }`;
       }
       function loadPlayer() {
         clearPlayer();
         if (events.length < 2 || !events.some((event) => event.type === 2)) {
           $('player-status').textContent =
             'Waiting for a full snapshot — interact with the example page.';
-          updateReloadButton();
+          updateAddEvents();
           return;
         }
         const snapshot = JSON.parse(JSON.stringify(events));
@@ -765,7 +777,7 @@
             $('player-status').textContent = playerLive
               ? 'Live — new events stream in as you interact.'
               : `Loaded ${snapshot.length} events.`;
-            updateReloadButton();
+            updateAddEvents();
           } catch (error) {
             clearPlayer();
             $('player-status').textContent = error.message;
@@ -831,7 +843,14 @@
           $(`${next}-tab`).focus();
         };
       }
-      $('reload-player').onclick = loadPlayer;
+      $('add-events').onclick = () => {
+        if (!player) return;
+        for (let i = playerLoadedCount; i < events.length; i++)
+          player.addEvent(events[i]);
+        playerLoadedCount = events.length;
+        $('player-status').textContent = `Loaded ${playerLoadedCount} events.`;
+        updateAddEvents();
+      };
       $('live-toggle').onclick = () => {
         playerLive = !playerLive;
         $('live-toggle').setAttribute('aria-pressed', String(playerLive));
@@ -1070,7 +1089,7 @@
           } catch {}
           playerLoadedCount = events.length;
         }
-        if (player) updateReloadButton();
+        if (player) updateAddEvents();
         if (!renderPending) {
           renderPending = true;
           requestAnimationFrame(render);
