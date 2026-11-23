@@ -744,15 +744,20 @@
                 events: snapshot,
                 width: iframe.clientWidth,
                 height: playerLive ? 540 : 470,
-                autoPlay: playerLive,
+                autoPlay: false,
                 liveMode: playerLive,
                 showController: !playerLive,
               },
             });
             if (playerLive) {
-              // Baseline "now": the whole backlog is in the past, so it is
-              // applied instantly (jump to current state); later events stream.
-              player.getReplayer().startLive(Date.now());
+              // Seek to the end so the view shows the current state, then go
+              // live without ever calling play() — the state machine only
+              // honours startLive from the paused state, and play() would
+              // baseline at the first event and replay from the start. New
+              // events then stream in via addEvent.
+              const replayer = player.getReplayer();
+              replayer.pause(replayer.getMetaData().totalTime);
+              replayer.startLive(Date.now());
               for (let i = snapshot.length; i < events.length; i++)
                 player.addEvent(events[i]);
             }
