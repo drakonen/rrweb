@@ -199,7 +199,7 @@
         background: #fff;
       }
       #form {
-        height: 940px;
+        height: 740px;
       }
       #settings summary {
         display: flex;
@@ -743,13 +743,16 @@
               props: {
                 events: snapshot,
                 width: iframe.clientWidth,
-                height: 470,
+                height: playerLive ? 540 : 470,
                 autoPlay: playerLive,
                 liveMode: playerLive,
+                showController: !playerLive,
               },
             });
             if (playerLive) {
-              player.getReplayer().startLive(snapshot[0].timestamp);
+              // Baseline "now": the whole backlog is in the past, so it is
+              // applied instantly (jump to current state); later events stream.
+              player.getReplayer().startLive(Date.now());
               for (let i = snapshot.length; i < events.length; i++)
                 player.addEvent(events[i]);
             }
