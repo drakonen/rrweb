@@ -28,7 +28,7 @@
       }
       main {
         display: grid;
-        grid-template-columns: minmax(280px, 1fr) minmax(400px, 2fr);
+        grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
         gap: 18px;
       }
       section {
@@ -72,29 +72,71 @@
       }
       .config-editor {
         display: flex;
+        position: relative;
         margin-top: 8px;
         border: 1px solid var(--border);
         border-radius: 5px;
         overflow: hidden;
         background: #142235;
       }
-      #boolean-gutter {
+      #format-config {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 2;
+        padding: 4px 9px;
+        border-color: #51607a;
+        background: #1d3049;
+        color: #dce8f5;
+        font-size: 12px;
+      }
+      #apply {
+        margin-left: auto;
+      }
+      #editor-gutter {
         position: relative;
         flex: 0 0 28px;
         overflow: clip;
         border-right: 1px solid var(--muted);
       }
-      #boolean-toggles {
+      #gutter-controls {
         position: absolute;
         inset: 0;
       }
-      #boolean-toggles input {
+      #gutter-controls input {
         position: absolute;
         width: 16px;
         height: 16px;
         margin: 0;
         accent-color: #80b4fa;
         cursor: pointer;
+      }
+      #gutter-controls .fold {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        padding: 0;
+        border: 1px solid #51607a;
+        border-radius: 3px;
+        background: #1d3049;
+        color: #dce8f5;
+        font: 12px/14px monospace;
+      }
+      #editor-stack {
+        position: relative;
+        display: flex;
+        flex: 1;
+        min-width: 0;
+      }
+      #config,
+      #config-highlight {
+        margin: 0;
+        padding: 12px;
+        border: 0;
+        font: 13px/21px monospace;
+        tab-size: 2;
+        white-space: pre;
+        overflow-wrap: normal;
       }
       #config {
         display: block;
@@ -103,27 +145,45 @@
         width: 100%;
         min-height: 440px;
         resize: vertical;
-        padding: 12px;
-        border: 0;
+        position: relative;
+        z-index: 1;
+        background: transparent;
+        color: transparent;
+        caret-color: #dce8f5;
+      }
+      #config::selection {
+        background: #35507a;
+      }
+      #config-highlight {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
         background: #142235;
         color: #dce8f5;
-        font: 13px/21px monospace;
-        tab-size: 2;
+      }
+      #config-highlight .dim {
+        color: #6f7f99;
+      }
+      #inline-controls {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      #inline-controls input {
+        position: absolute;
+        width: 15px;
+        height: 15px;
+        margin: 0;
+        accent-color: #80b4fa;
+        pointer-events: auto;
+        cursor: pointer;
       }
       #config-error {
         color: var(--error);
         overflow-wrap: anywhere;
-      }
-      #field-tools {
-        min-height: 36px;
-        overflow-wrap: anywhere;
-      }
-      #field-tools code {
-        flex-basis: 100%;
-      }
-      #add-option {
-        min-width: 0;
-        max-width: 100%;
       }
       .iframe-shell {
         overflow: hidden;
@@ -131,40 +191,47 @@
         border-radius: 8px;
         box-shadow: 0 2px 8px #18263612;
       }
-      .iframe-header {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 12px;
-        background: var(--page);
-        border-bottom: 1px solid var(--border);
-        color: var(--muted);
-        font-size: 12px;
-      }
-      .iframe-header span {
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-      .iframe-header a {
-        color: var(--brand);
-        font-family: monospace;
-      }
-      .iframe-header a[aria-current='page'] {
-        font-weight: 600;
-        text-decoration-thickness: 2px;
-      }
       iframe {
         display: block;
         width: 100%;
         height: 470px;
         border: 0;
-        background: var(--surface);
+        background: #fff;
+      }
+      #form {
+        height: 740px;
+      }
+      #settings summary {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        cursor: pointer;
+        list-style: none;
+      }
+      #settings summary::-webkit-details-marker {
+        display: none;
+      }
+      #settings summary::before {
+        content: '▸';
+        color: var(--muted);
+      }
+      #settings[open] summary::before {
+        content: '▾';
+      }
+      #settings summary h2 {
+        margin: 0;
+      }
+      #settings[open] summary {
+        margin-bottom: 14px;
+      }
+      #settings summary #copy-options.copied {
+        border-color: #2f7d4f;
+        color: #2f7d4f;
       }
       #status {
-        padding: 10px 0;
         font-weight: 600;
+        margin-left: auto;
       }
       #status.error {
         color: var(--error);
@@ -176,40 +243,119 @@
       [hidden] {
         display: none !important;
       }
-      [role='tab'][aria-selected='true'] {
-        background: var(--selected);
-        border-color: var(--brand);
+      .tabs {
+        gap: 2px;
+        margin-bottom: 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .tabs [role='tab'] {
+        border: 1px solid transparent;
+        border-bottom: 0;
+        border-radius: 7px 7px 0 0;
+        background: transparent;
+        color: var(--muted);
+        margin-bottom: -1px;
+      }
+      .tabs [role='tab'][aria-selected='true'] {
+        border-color: var(--border);
+        background: var(--surface);
+        color: var(--text);
+        font-weight: 600;
+      }
+      .linklike {
+        border: 0;
+        padding: 0;
+        background: none;
+        color: var(--brand);
+        text-decoration: underline;
+        cursor: pointer;
+        font: inherit;
       }
       #player-host iframe {
         height: 550px;
       }
-      .events {
-        display: grid;
-        grid-template-columns: minmax(250px, 1fr) minmax(300px, 2fr);
-        gap: 14px;
+      #event-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .filter-chip {
+        padding: 3px 10px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .filter-chip[aria-pressed='true'] {
+        border-color: var(--brand);
+        color: var(--brand);
+        background: var(--selected);
+        font-weight: 600;
+      }
+      .filter-chip .n {
+        margin-left: 4px;
+        opacity: 0.75;
+        font-variant-numeric: tabular-nums;
+      }
+      .events-section {
+        display: flex;
+        flex-direction: column;
+      }
+      .events-section #events-panel {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-height: 0;
       }
       #event-list {
-        height: 380px;
+        flex: 1;
+        min-height: 300px;
         overflow: auto;
         border: 1px solid var(--border);
         border-radius: 5px;
       }
-      #event-list button {
-        display: block;
+      .event {
+        border-bottom: 1px solid var(--border);
+      }
+      .event > button {
+        display: flex;
+        align-items: center;
+        gap: 6px;
         width: 100%;
         border: 0;
-        border-bottom: 1px solid var(--border);
         border-radius: 0;
+        padding: 6px 8px;
         text-align: left;
         font: 12px/1.5 monospace;
+        white-space: nowrap;
+        overflow: hidden;
       }
-      #event-list button[aria-pressed='true'] {
+      .event > button[aria-expanded='true'] {
         background: var(--selected);
+      }
+      .event .idx,
+      .event .time {
+        flex-shrink: 0;
+        color: var(--muted);
+      }
+      .event .target {
+        margin-left: auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--muted);
+      }
+      .chip {
+        flex-shrink: 0;
+        padding: 0 6px;
+        border-radius: 4px;
+        font-weight: 600;
+        background: hsl(var(--h) 60% var(--chip-bg-l));
+        color: hsl(var(--h) 70% var(--chip-fg-l));
       }
       pre {
         margin: 0;
         padding: 14px;
-        height: 380px;
         overflow: auto;
         background: #142235;
         color: #dce8f5;
@@ -218,9 +364,19 @@
         white-space: pre-wrap;
         overflow-wrap: anywhere;
       }
+      #raw-json {
+        height: 380px;
+      }
+      .event-json {
+        max-height: 320px;
+        border-radius: 0;
+      }
+      .note {
+        user-select: none;
+        color: #85b37a;
+      }
       @media (max-width: 800px) {
-        main,
-        .events {
+        main {
           grid-template-columns: 1fr;
         }
         .wide {
@@ -237,6 +393,8 @@
         --brand: #3451b2;
         --selected: #e9edfa;
         --error: #b42318;
+        --chip-bg-l: 89%;
+        --chip-fg-l: 28%;
       }
       :root[data-theme='dark'] {
         color-scheme: dark;
@@ -248,6 +406,8 @@
         --brand: #a8b1ff;
         --selected: #30334f;
         --error: #ff9b91;
+        --chip-bg-l: 24%;
+        --chip-fg-l: 84%;
       }
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme='light']) {
@@ -260,6 +420,8 @@
           --brand: #a8b1ff;
           --selected: #30334f;
           --error: #ff9b91;
+          --chip-bg-l: 24%;
+          --chip-fg-l: 84%;
         }
       }
       a {
@@ -365,8 +527,8 @@
           <strong>Apply &amp; restart</strong>.
         </li>
         <li>
-          Interact with <strong>Form interactions</strong> or
-          <strong>DOM changes</strong>.
+          Interact with the <strong>Example page</strong> — fill the form or
+          use the <strong>DOM changes</strong> buttons.
         </li>
         <li>
           Select an event to inspect it, or open <strong>Raw JSON</strong> to
@@ -378,78 +540,71 @@
         </li>
       </ol>
       <p>
-        Applying settings or switching examples clears the captured events and
-        player and starts a new recording. Recording continues during playback;
-        load the latest events to include new interactions.
+        Applying settings clears the captured events and player and starts a
+        new recording. Recording continues during playback; load the latest
+        events to include new interactions.
       </p>
       <p id="config-help">
-        Removing an option uses rrweb's default. Added values are editable
-        examples. <code>ignoreCSSAttributes</code> accepts an array of strings.
+        Every recorder option is listed from the start. Options at their
+        rrweb default are greyed; edit any value in place, or delete an
+        option's line to fall back to its default.
+        <code>//</code> and <code>/* */</code> comments are informational
+        and ignored when settings are applied; the gutter's
+        <code>+</code>/<code>−</code> buttons fold an option's contents onto
+        one line. <code>ignoreCSSAttributes</code> accepts an array of strings.
         The playground supplies <code>emit</code>; callbacks, plugins, and
         regular expressions require JavaScript and cannot be configured here.
       </p>
     </aside>
     <main>
-      <section>
-        <h2>Recorder settings</h2>
-        <label for="config">Recorder options (JSON)</label>
-        <a
-          id="options-docs"
-          href="https://rrweb.com/docs/guide#record-options"
-          target="_blank"
-          rel="noopener"
-          >Docs ↗</a
-        >
+      <section class="wide">
+        <details id="settings">
+          <summary>
+            <h2>Record options</h2>
+            <a
+              id="options-docs"
+              href="https://rrweb.com/docs/guide#record-options"
+              target="_blank"
+              rel="noopener"
+              >Docs ↗</a
+            >
+            <div id="status" role="status" aria-live="polite">Loading…</div>
+            <button id="copy-options" hidden>Copy record options</button>
+          </summary>
         <div class="config-editor">
-          <div id="boolean-gutter"><div id="boolean-toggles"></div></div>
-          <textarea
-            id="config"
-            spellcheck="false"
-            wrap="off"
-            aria-describedby="config-help config-error"
-          ></textarea>
+          <div id="editor-gutter"><div id="gutter-controls"></div></div>
+          <div id="editor-stack">
+            <pre id="config-highlight" aria-hidden="true"></pre>
+            <textarea
+              id="config"
+              spellcheck="false"
+              wrap="off"
+              aria-label="Record options (JSON)"
+              aria-describedby="config-help config-error"
+            ></textarea>
+            <div id="inline-controls"></div>
+          </div>
+          <button id="format-config" hidden>Format JSON</button>
         </div>
         <p id="config-error" role="status" aria-live="polite"></p>
-        <div
-          id="field-tools"
-          class="toolbar"
-          aria-label="Selected field controls"
-        ></div>
-        <div class="toolbar">
-          <label for="add-option">Add option</label>
-          <select id="add-option"></select>
-          <button id="add-field">Add</button>
-        </div>
         <div class="toolbar">
           <button class="primary" id="apply">Apply &amp; restart</button>
-          <button id="format-config">Format JSON</button>
         </div>
-        <div id="status" role="status" aria-live="polite">Loading…</div>
+        </details>
       </section>
       <section>
-        <h2>Live page</h2>
+        <h2>Example page</h2>
         <div class="iframe-shell">
-          <div class="iframe-header">
-            <span>Example</span>
-            <a
-              href="playground-form.html"
-              target="form-frame"
-              aria-current="page"
-            >
-              Form interactions
-            </a>
-            <a href="playground-dom.html" target="form-frame">DOM changes</a>
-          </div>
           <iframe
             id="form"
             name="form-frame"
-            title="Page being recorded"
+            title="Example page being recorded"
           ></iframe>
         </div>
       </section>
-      <section class="wide">
+      <section class="events-section">
         <h2>Captured events</h2>
-        <div class="toolbar" role="tablist" aria-label="Recording viewer">
+        <div class="toolbar tabs" role="tablist" aria-label="Recording viewer">
           <button
             id="events-tab"
             role="tab"
@@ -479,23 +634,9 @@
         </div>
         <div id="events-panel" role="tabpanel" aria-labelledby="events-tab">
           <div class="toolbar">
-            <label for="filter">Show</label>
-            <select id="filter">
-              <option value="relevant">
-                Snapshots, mutations &amp; inputs
-              </option>
-              <option value="all">All events</option>
-              <option value="input">Input events</option>
-              <option value="mutation">Mutations</option>
-            </select>
-            <span id="count">0 captured</span>
+            <div id="event-filters" role="group" aria-label="Filter events"></div>
           </div>
-          <div class="events">
-            <div id="event-list" aria-label="Captured event list"></div>
-            <pre id="detail" tabindex="0" aria-label="Selected event JSON">
-Waiting for a recording…</pre
-            >
-          </div>
+          <div id="event-list" aria-label="Captured event list"></div>
         </div>
         <div
           id="player-panel"
@@ -504,13 +645,14 @@ Waiting for a recording…</pre
           hidden
         >
           <div class="toolbar">
-            <button id="refresh-player">Load latest events</button>
+            <button id="live-toggle" aria-pressed="false">Live: off</button>
             <span
               id="player-status"
               class="muted"
               role="status"
               aria-live="polite"
             ></span>
+            <button id="add-events" class="linklike" hidden></button>
           </div>
           <div id="player-host"></div>
         </div>
@@ -548,6 +690,7 @@ Waiting for a recording…</pre
         $('back-to-docs').href = deployment.docsBase + 'events#events';
         $('options-docs').href = deployment.docsBase + 'guide#record-options';
       }
+      $('options-docs').onclick = (event) => event.stopPropagation();
       // Reuse the docs theme preference when available, otherwise follow the OS.
       try {
         const theme = localStorage.getItem('vitepress-theme-appearance');
@@ -556,11 +699,11 @@ Waiting for a recording…</pre
       } catch {}
 
       const frame = $('form');
-      const formLinks = document.querySelectorAll('.iframe-header a');
-      let formPage = 'playground-form.html';
+      const formPage = 'playground-form.html';
       const events = [];
       let stopRecording;
       let selected = -1;
+      let followLatest = true;
       let generation = 0;
       let renderPending = false;
       let scrollToLatest = false;
@@ -569,6 +712,8 @@ Waiting for a recording…</pre
       let player;
       let playerFrame;
       let playerLoad = 0;
+      let playerLive = false;
+      let playerLoadedCount = 0;
       function clearPlayer() {
         playerLoad++;
         if (player) {
@@ -579,11 +724,21 @@ Waiting for a recording…</pre
         playerFrame = undefined;
         $('player-host').replaceChildren();
       }
+      function updateAddEvents() {
+        const pending = events.length - playerLoadedCount;
+        const show = !playerLive && player && pending > 0;
+        $('add-events').hidden = !show;
+        if (show)
+          $('add-events').textContent = `add ${pending} event${
+            pending === 1 ? '' : 's'
+          }`;
+      }
       function loadPlayer() {
         clearPlayer();
         if (events.length < 2 || !events.some((event) => event.type === 2)) {
           $('player-status').textContent =
-            'Waiting for a full snapshot. Load latest events once recording is ready.';
+            'Waiting for a full snapshot — interact with the example page.';
+          updateAddEvents();
           return;
         }
         const snapshot = JSON.parse(JSON.stringify(events));
@@ -608,13 +763,33 @@ Waiting for a recording…</pre
               props: {
                 events: snapshot,
                 width: iframe.clientWidth,
-                height: 470,
+                height: playerLive ? 540 : 470,
                 autoPlay: false,
+                liveMode: playerLive,
+                showController: !playerLive,
+                // In live mode the recorder and replay run at once; without
+                // this the replay's focus() calls steal focus from the
+                // element you just clicked in the example page.
+                triggerFocus: !playerLive,
               },
             });
-            $(
-              'player-status',
-            ).textContent = `Loaded ${snapshot.length} events.`;
+            if (playerLive) {
+              // Seek to the end so the view shows the current state, then go
+              // live without ever calling play() — the state machine only
+              // honours startLive from the paused state, and play() would
+              // baseline at the first event and replay from the start. New
+              // events then stream in via addEvent.
+              const replayer = player.getReplayer();
+              replayer.pause(replayer.getMetaData().totalTime);
+              replayer.startLive(Date.now());
+              for (let i = snapshot.length; i < events.length; i++)
+                player.addEvent(events[i]);
+            }
+            playerLoadedCount = events.length;
+            $('player-status').textContent = playerLive
+              ? 'Live — new events stream in as you interact.'
+              : `Loaded ${snapshot.length} events.`;
+            updateAddEvents();
           } catch (error) {
             clearPlayer();
             $('player-status').textContent = error.message;
@@ -639,8 +814,12 @@ Waiting for a recording…</pre
         }
       };
       function renderRawJSON() {
-        if (!$('raw-panel').hidden)
-          $('raw-json').textContent = JSON.stringify(events, null, 2);
+        if ($('raw-panel').hidden) return;
+        $('raw-json').textContent = JSON.stringify(events, null, 2);
+        const kib = (JSON.stringify(events).length / 1024).toFixed(1);
+        $('copy-json').textContent = `Copy (${events.length} event${
+          events.length === 1 ? '' : 's'
+        }, ${kib} KiB)`;
       }
       function selectViewer(view) {
         for (const name of viewerTabs) {
@@ -674,7 +853,20 @@ Waiting for a recording…</pre
           $(`${next}-tab`).focus();
         };
       }
-      $('refresh-player').onclick = loadPlayer;
+      $('add-events').onclick = () => {
+        if (!player) return;
+        for (let i = playerLoadedCount; i < events.length; i++)
+          player.addEvent(events[i]);
+        playerLoadedCount = events.length;
+        $('player-status').textContent = `Loaded ${playerLoadedCount} events.`;
+        updateAddEvents();
+      };
+      $('live-toggle').onclick = () => {
+        playerLive = !playerLive;
+        $('live-toggle').setAttribute('aria-pressed', String(playerLive));
+        $('live-toggle').textContent = playerLive ? 'Live: on' : 'Live: off';
+        if (!$('player-panel').hidden) loadPlayer();
+      };
       new ResizeObserver(() => {
         if (player && playerFrame?.clientWidth) {
           player.$set({ width: playerFrame.clientWidth });
@@ -686,76 +878,231 @@ Waiting for a recording…</pre
         const member = recorderEnums[name]?.[value];
         return member === undefined ? `${name}(${value})` : `${name}.${member}`;
       }
-      function eventLabel(event) {
-        let label = enumName('EventType', event.type);
+      function relTime(ms) {
+        const seconds = Math.max(0, Math.floor(ms / 1000));
+        const hours = Math.floor(seconds / 3600);
+        const pad = (unit) => String(Math.floor(unit)).padStart(2, '0');
+        const mmss = `${pad((seconds / 60) % 60)}:${pad(seconds % 60)}`;
+        return hours ? `${hours}:${mmss}` : mmss;
+      }
+      function part(className, text) {
+        const span = document.createElement('span');
+        span.className = className;
+        span.textContent = text;
+        return span;
+      }
+      function chip(name, value, hue) {
+        const member = recorderEnums[name]?.[value];
+        const span = part(
+          'chip',
+          member === undefined ? `${name}(${value})` : member,
+        );
+        span.style.setProperty('--h', String(((hue % 360) + 360) % 360));
+        span.title = enumName(name, value);
+        return span;
+      }
+      function summaryParts(event, index) {
+        const parts = [
+          part('idx', `#${index + 1}`),
+          part('time', relTime(event.timestamp - events[0].timestamp)),
+          chip('EventType', event.type, 200 + event.type * 87),
+        ];
         if (event.type === recorderEnums.EventType?.IncrementalSnapshot) {
-          label += ` · ${enumName('IncrementalSource', event.data.source)}`;
+          parts.push(
+            chip('IncrementalSource', event.data.source, event.data.source * 47),
+          );
           if (
             event.data.source ===
             recorderEnums.IncrementalSource?.MouseInteraction
           )
-            label += ` · ${enumName('MouseInteractions', event.data.type)}`;
+            parts.push(
+              chip('MouseInteractions', event.data.type, 130 + event.data.type * 29),
+            );
         }
-        return label;
+        let targetId = event.data && event.data.id;
+        if (event.type === 3 && event.data.source === 0) {
+          const d = event.data;
+          const changes = [
+            ...(d.texts || []),
+            ...(d.attributes || []),
+            ...(d.removes || []),
+            ...(d.adds || []),
+          ];
+          if (changes.length === 1)
+            targetId = changes[0].id ?? changes[0].node?.id;
+        }
+        if (targetId !== undefined)
+          parts.push(part('target', `node ${targetId}`));
+        return parts;
+      }
+      function annotation(event, path, value) {
+        const key = path.join('.');
+        if (key === 'type') return enumName('EventType', value);
+        if (key === 'timestamp')
+          return relTime(value - events[0].timestamp);
+        if (event.type === recorderEnums.EventType?.IncrementalSnapshot) {
+          if (key === 'data.source')
+            return enumName('IncrementalSource', value);
+          if (
+            key === 'data.type' &&
+            event.data.source ===
+              recorderEnums.IncrementalSource?.MouseInteraction
+          )
+            return enumName('MouseInteractions', value);
+        }
+        return undefined;
+      }
+      function buildAnnotatedJSON(parent, value, indent, path, event) {
+        const pad = ' '.repeat(indent + 2);
+        if (Array.isArray(value)) {
+          if (!value.length) return parent.append('[]');
+          parent.append('[\n');
+          value.forEach((item, i) => {
+            parent.append(pad);
+            buildAnnotatedJSON(parent, item, indent + 2, [...path, i], event);
+            parent.append((i < value.length - 1 ? ',' : '') + '\n');
+          });
+          parent.append(' '.repeat(indent) + ']');
+        } else if (value && typeof value === 'object') {
+          const entries = Object.entries(value);
+          if (!entries.length) return parent.append('{}');
+          parent.append('{\n');
+          entries.forEach(([key, child], i) => {
+            parent.append(pad + JSON.stringify(key) + ': ');
+            buildAnnotatedJSON(parent, child, indent + 2, [...path, key], event);
+            parent.append(i < entries.length - 1 ? ',' : '');
+            const note = annotation(event, [...path, key], child);
+            if (note !== undefined) {
+              const span = part('note', `  // ${note}`);
+              span.setAttribute('aria-hidden', 'true');
+              parent.append(span);
+            }
+            parent.append('\n');
+          });
+          parent.append(' '.repeat(indent) + '}');
+        } else {
+          parent.append(JSON.stringify(value));
+        }
       }
 
       function status(message, error = false) {
         $('status').textContent = message;
         $('status').classList.toggle('error', error);
       }
-      function matches(event) {
-        const mode = $('filter').value;
-        const source = event.type === 3 ? event.data.source : -1;
-        return (
-          mode === 'all' ||
-          (mode === 'input' && source === 5) ||
-          (mode === 'mutation' && source === 0) ||
-          (mode === 'relevant' &&
-            (event.type === 2 || source === 0 || source === 5))
+      const filterCategories = [
+        { key: 'mutation', label: 'Mutation' },
+        { key: 'input', label: 'Input' },
+        { key: 'mouse', label: 'Mouse' },
+        { key: 'scroll', label: 'Scroll' },
+        { key: 'other', label: 'Other' },
+      ];
+      const filterState = {
+        mutation: true,
+        input: true,
+        mouse: false,
+        scroll: false,
+        other: true,
+      };
+      function eventCategory(event) {
+        if (event.type !== 3) return null;
+        switch (event.data.source) {
+          case 0:
+            return 'mutation';
+          case 5:
+            return 'input';
+          case 1:
+          case 2:
+            return 'mouse';
+          case 3:
+            return 'scroll';
+          default:
+            return 'other';
+        }
+      }
+      const filterChips = {};
+      for (const { key, label } of filterCategories) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'filter-chip';
+        chip.setAttribute('aria-pressed', String(filterState[key]));
+        chip.innerHTML = `${label} <span class="n">0</span>`;
+        chip.onclick = () => {
+          filterState[key] = !filterState[key];
+          render();
+        };
+        filterChips[key] = chip;
+        $('event-filters').append(chip);
+      }
+      function renderFilters() {
+        const counts = Object.fromEntries(
+          filterCategories.map(({ key }) => [key, 0]),
         );
+        for (const event of events) {
+          const key = eventCategory(event);
+          if (key) counts[key]++;
+        }
+        for (const { key } of filterCategories) {
+          filterChips[key].setAttribute('aria-pressed', String(filterState[key]));
+          filterChips[key].querySelector('.n').textContent = counts[key];
+        }
+      }
+      function matches(event) {
+        const key = eventCategory(event);
+        return key === null || filterState[key];
       }
       function render() {
         renderPending = false;
         renderRawJSON();
         const list = $('event-list');
         const previousScrollTop = list.scrollTop;
+        const pinnedToLatest =
+          list.scrollTop + list.clientHeight >= list.scrollHeight - 30;
         const visible = events
           .map((event, index) => ({ event, index }))
           .filter(({ event }) => matches(event));
-        $(
-          'count',
-        ).textContent = `${events.length} captured · ${visible.length} matching`;
+        if (followLatest && visible.length)
+          selected = visible[visible.length - 1].index;
+        renderFilters();
         list.replaceChildren();
         // Keep the rendered list limited to the latest 300 matching events.
         for (const { event, index } of visible.slice(-300)) {
+          const row = document.createElement('div');
+          row.className = 'event';
           const button = document.createElement('button');
-          const label = eventLabel(event);
-          const target =
-            event.data && event.data.id !== undefined
-              ? ` · node ${event.data.id}`
-              : '';
-          button.textContent = `#${index + 1} +${
-            event.timestamp - events[0].timestamp
-          }ms ${label}${target}`;
-          button.setAttribute('aria-pressed', String(index === selected));
+          button.append(...summaryParts(event, index));
+          button.setAttribute('aria-expanded', String(index === selected));
           button.onclick = () => {
-            selected = index;
+            followLatest = false;
+            selected = index === selected ? -1 : index;
             render();
           };
-          list.append(button);
+          row.append(button);
+          if (index === selected) {
+            const json = document.createElement('pre');
+            json.className = 'event-json';
+            json.tabIndex = 0;
+            json.setAttribute('aria-label', 'Selected event JSON');
+            buildAnnotatedJSON(json, event, 0, [], event);
+            row.append(json);
+          }
+          list.append(row);
         }
-        list.scrollTop = scrollToLatest ? list.scrollHeight : previousScrollTop;
+        list.scrollTop =
+          scrollToLatest && pinnedToLatest
+            ? list.scrollHeight
+            : previousScrollTop;
         scrollToLatest = false;
-        $('detail').textContent =
-          selected < 0
-            ? 'No event selected.'
-            : JSON.stringify(events[selected], null, 2);
       }
       function capture(event) {
         events.push(event);
-        if (matches(event)) scrollToLatest = true;
-        if (selected < 0 || (event.type === 2 && events[selected].type !== 2))
-          selected = events.length - 1;
+        scrollToLatest = true;
+        if (playerLive && player) {
+          try {
+            player.addEvent(event);
+          } catch {}
+          playerLoadedCount = events.length;
+        }
+        if (player) updateAddEvents();
         if (!renderPending) {
           renderPending = true;
           requestAnimationFrame(render);
@@ -769,24 +1116,20 @@ Waiting for a recording…</pre
         let options;
         try {
           options = readConfig();
+          appliedConfigJSON = JSON.stringify(options);
           if (options.ignoreCSSAttributes)
             options.ignoreCSSAttributes = new Set(options.ignoreCSSAttributes);
         } catch (error) {
           status(`Cannot apply settings: ${error.message}`, true);
-          return;
+          return false;
         }
+        updateApplyState();
         if (location.protocol === 'file:') {
           status(
             'Serve the repository over HTTP: python3 -m http.server 8000, then open this page through localhost:8000.',
             true,
           );
-          return;
-        }
-        formPage = page;
-        for (const link of formLinks) {
-          if (link.getAttribute('href') === page)
-            link.setAttribute('aria-current', 'page');
-          else link.removeAttribute('aria-current');
+          return false;
         }
         const current = ++generation;
         stop();
@@ -795,6 +1138,7 @@ Waiting for a recording…</pre
           'Recording restarted. Load latest events when ready.';
         events.length = 0;
         selected = -1;
+        followLatest = true;
         render();
         status('Loading page and recorder…');
         frame.onload = () => {
@@ -807,11 +1151,14 @@ Waiting for a recording…</pre
           const script = doc.createElement('script');
           script.src = new URL(deployment.recorderAsset, location.href).href;
           script.onerror = () => {
-            if (current === generation)
+            if (current === generation) {
               status(
                 'Cannot load the recorder. Reload the page and try again.',
                 true,
               );
+              appliedConfigJSON = null;
+              updateApplyState();
+            }
           };
           script.onload = () => {
             if (current !== generation) return;
@@ -825,35 +1172,26 @@ Waiting for a recording…</pre
                 throw new Error(
                   'Recorder did not start. Check the browser console.',
                 );
-              status('Recording — settings applied.');
+              status('');
             } catch (error) {
               stop();
               status(error.message, true);
+              appliedConfigJSON = null;
+              updateApplyState();
             }
           };
           doc.head.append(script);
         };
         frame.src = `${page}?session=${current}`;
+        return true;
       }
-      $('apply').onclick = () => restart();
-      for (const link of formLinks) {
-        link.onclick = (event) => {
-          if (
-            event.button !== 0 ||
-            event.ctrlKey ||
-            event.metaKey ||
-            event.shiftKey ||
-            event.altKey
-          )
-            return;
-          event.preventDefault();
-          restart(link.getAttribute('href'));
-        };
-      }
-      $('filter').onchange = render;
+      $('apply').onclick = () => {
+        if (restart()) $('settings').open = false;
+      };
       const editor = $('config');
-      // This catalog supplies add-option examples and controls. Unknown JSON
-      // fields remain intact, so newer recorder options can still be entered.
+      // This catalog supplies validation types and field-tools controls.
+      // Unknown JSON fields remain intact, so newer recorder options can
+      // still be entered.
       const fields = new Map();
       function field(path, example, types = [typeof example], choices) {
         fields.set(path, { example, types, choices });
@@ -871,13 +1209,16 @@ Waiting for a recording…</pre
         field(name, ['inlineStylesheet', 'recordDOM'].includes(name));
       for (const [name, example] of Object.entries({
         blockClass: 'rr-block',
-        blockSelector: '.private',
         ignoreClass: 'rr-ignore',
-        ignoreSelector: '.ignored',
         maskTextClass: 'rr-mask',
-        maskTextSelector: '.sensitive',
       }))
         field(name, example);
+      for (const [name, example] of Object.entries({
+        blockSelector: '.private',
+        ignoreSelector: '.ignored',
+        maskTextSelector: '.sensitive',
+      }))
+        field(name, example, ['string', 'null']);
       for (const name of [
         'checkoutEveryNth',
         'checkoutEveryNms',
@@ -939,8 +1280,182 @@ Waiting for a recording…</pre
       field('dataURLOptions.type', 'image/webp');
       field('dataURLOptions.quality', 0.8);
 
+      // Defaults mirror packages/rrweb/src/record/index.ts (and
+      // slimDOMDefaults in rrweb-snapshot); update together.
+      const optionDefaults = new Map(
+        Object.entries({
+          maskAllInputs: false,
+          maskInputOptions: { password: true },
+          maskTextClass: 'rr-mask',
+          maskTextSelector: null,
+          blockClass: 'rr-block',
+          blockSelector: null,
+          ignoreClass: 'rr-ignore',
+          ignoreSelector: null,
+          recordDOM: true,
+          slimDOMOptions: {},
+          ignoreCSSAttributes: [],
+          inlineStylesheet: true,
+          recordCanvas: false,
+          dataURLOptions: {},
+          inlineImages: false,
+          collectFonts: false,
+          sampling: {},
+          mousemoveWait: 50,
+          recordCrossOriginIframes: false,
+          userTriggeredOnInput: false,
+          recordAfter: 'load',
+        }),
+      );
+      for (const key of fields.keys())
+        if (/^(maskInputOptions|slimDOMOptions)\./.test(key))
+          optionDefaults.set(key, false);
+      optionDefaults.set('sampling.input', 'all');
+      optionDefaults.set('sampling.mouseInteraction', true);
+      optionDefaults.set('dataURLOptions.type', 'image/png');
+      function baselineValue(key) {
+        if (optionDefaults.has(key)) return optionDefaults.get(key);
+        const [parent, ...rest] = key.split('.');
+        if (rest.length && schemaObjects.includes(parent) && fields.has(key))
+          return fields.get(key).example;
+        return undefined;
+      }
+      function isDefaultValue(path, value) {
+        const base = baselineValue(path.join('.'));
+        return (
+          base !== undefined && JSON.stringify(value) === JSON.stringify(base)
+        );
+      }
+      function nonDefaultOptions(value, path = []) {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          const out = {};
+          for (const [key, child] of Object.entries(value)) {
+            const childPath = [...path, key];
+            if (isDefaultValue(childPath, child)) continue;
+            const kept = nonDefaultOptions(child, childPath);
+            if (kept !== undefined) out[key] = kept;
+          }
+          return Object.keys(out).length || path.length === 0 ? out : undefined;
+        }
+        return value;
+      }
+      function presentedDefaults() {
+        const config = {};
+        for (const [key, value] of optionDefaults)
+          if (!key.includes('.')) config[key] = structuredClone(value);
+        config.maskInputOptions = Object.fromEntries(
+          inputTypes.map((type) => [type, true]),
+        );
+        return config;
+      }
+      const collapsedPaths = new Set();
+      function summarize(value) {
+        if (Array.isArray(value))
+          return `${value.length} item${value.length === 1 ? '' : 's'}`;
+        const entries = Object.values(value);
+        if (entries.length && entries.every((v) => typeof v === 'boolean')) {
+          const on = entries.filter(Boolean).length;
+          return on === entries.length
+            ? `all ${on} on`
+            : `${on} on, ${entries.length - on} off`;
+        }
+        return `${entries.length} option${entries.length === 1 ? '' : 's'}`;
+      }
+      function annotationNotes(config, path, value) {
+        const notes = [];
+        const key = path.join('.');
+        if (path.length === 1 && optionDefaults.has(key)) {
+          const fallback = optionDefaults.get(key);
+          if (
+            JSON.stringify(value) !== JSON.stringify(fallback) &&
+            (fallback === null || typeof fallback !== 'object')
+          )
+            notes.push(`default: ${JSON.stringify(fallback)}`);
+        }
+        if (key === 'maskInputOptions' && config.maskAllInputs === true)
+          notes.push('overridden by maskAllInputs: true');
+        if (
+          key === 'maskAllInputs' &&
+          value === false &&
+          config.maskInputOptions !== undefined
+        )
+          notes.push('false: input masking comes from maskInputOptions');
+        if (key === 'mousemoveWait' && config.sampling?.mousemove !== undefined)
+          notes.push('overridden by sampling.mousemove');
+        if (
+          (key === 'sampling.canvas' || key === 'dataURLOptions') &&
+          config.recordCanvas !== true
+        )
+          notes.push('only used when recordCanvas is true');
+        if (
+          ['recordCanvas', 'inlineImages', 'collectFonts', 'inlineStylesheet'].includes(
+            key,
+          ) &&
+          config.recordDOM === false
+        )
+          notes.push('no effect while recordDOM is false');
+        if (key === 'checkoutEveryNms' || key === 'checkoutEveryNth')
+          notes.push('checkout occurs on the next event past the threshold');
+        if (key === 'recordAfter' || key === 'sampling.input') {
+          const others = fields
+            .get(key)
+            .choices.filter((choice) => choice !== value);
+          if (others.length)
+            notes.push(`or ${others.map((c) => JSON.stringify(c)).join(' / ')}`);
+        }
+        if (key === 'sampling.canvas') notes.push('"all" or a number');
+        if (
+          key === 'slimDOMOptions' &&
+          value &&
+          typeof value === 'object' &&
+          !Object.keys(value).length
+        )
+          notes.push('or set to true / "all"');
+        return notes.length ? `  // ${notes.join(' · ')}` : '';
+      }
+      function formatConfig(config) {
+        function write(value, indent, path) {
+          if (!value || typeof value !== 'object') return JSON.stringify(value);
+          const entries = Object.entries(value);
+          if (!entries.length) return Array.isArray(value) ? '[]' : '{}';
+          if (path.length && collapsedPaths.has(path.join('.')))
+            return `/* ${summarize(value)} */ ${JSON.stringify(value)}`;
+          const pad = ' '.repeat(indent + 2);
+          const close = ' '.repeat(indent);
+          if (Array.isArray(value))
+            return `[\n${value
+              .map(
+                (item, i) =>
+                  pad +
+                  write(item, indent + 2, [...path, i]) +
+                  (i < value.length - 1 ? ',' : ''),
+              )
+              .join('\n')}\n${close}]`;
+          return `{\n${entries
+            .map(([key, child], i) => {
+              const childPath = [...path, key];
+              return (
+                pad +
+                JSON.stringify(key) +
+                ': ' +
+                write(child, indent + 2, childPath) +
+                (i < entries.length - 1 ? ',' : '') +
+                annotationNotes(config, childPath, child)
+              );
+            })
+            .join('\n')}\n${close}}`;
+        }
+        return write(config, 0, []);
+      }
+      function stripComments(text) {
+        return text.replace(
+          /("(?:[^"\\]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+          (match, string) => string ?? match.replace(/[^\n]/g, ' '),
+        );
+      }
+
       function readConfig() {
-        const config = JSON.parse(editor.value);
+        const config = JSON.parse(stripComments(editor.value));
         const kind = (value) =>
           value === null
             ? 'null'
@@ -993,11 +1508,12 @@ Waiting for a recording…</pre
         return config;
       }
 
-      // Locate properties using JSON tokens, so escaped strings, nested objects
-      // and repeated keys in different objects resolve to the correct field.
+      // Locate properties using JSON tokens (comments stripped first), so
+      // escaped strings, nested objects and repeated keys in different
+      // objects resolve to the correct field.
       function propertyRanges() {
         const tokens = Array.from(
-          editor.value.matchAll(
+          stripComments(editor.value).matchAll(
             /"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null|[{}[\]:,]/g,
           ),
         );
@@ -1041,63 +1557,221 @@ Waiting for a recording…</pre
         value([]);
         return ranges;
       }
-      let renderedBooleanJSON;
-      function renderBooleanCheckboxes(ranges) {
+      const schemaObjects = [
+        'maskInputOptions',
+        'sampling',
+        'slimDOMOptions',
+        'dataURLOptions',
+      ];
+      function knownChildren(parent) {
+        const prefix = `${parent}.`;
+        return [...fields.keys()]
+          .filter((key) => key.startsWith(prefix))
+          .map((key) => key.slice(prefix.length))
+          .filter((key) => !key.includes('.'));
+      }
+      function childDefault(parent, child) {
+        return structuredClone(baselineValue(`${parent}.${child}`));
+      }
+      let measuredCharWidth = 0;
+      function charWidth() {
+        if (measuredCharWidth) return measuredCharWidth;
+        const probe = document.createElement('span');
+        probe.textContent = '0000000000';
+        probe.style.cssText =
+          'position:absolute;visibility:hidden;white-space:pre;font:13px/21px monospace';
+        document.body.append(probe);
+        measuredCharWidth = probe.getBoundingClientRect().width / 10 || 7.8;
+        probe.remove();
+        return measuredCharWidth;
+      }
+      let renderedGutterJSON;
+      function renderGutter(config, ranges) {
         const source = ranges ? editor.value : undefined;
-        if (renderedBooleanJSON === source) return;
-        renderedBooleanJSON = source;
-        const toggles = $('boolean-toggles');
-        toggles.replaceChildren();
-        const columns = new Map();
-        let width = 28;
+        if (renderedGutterJSON === source) return;
+        renderedGutterJSON = source;
+        const controls = $('gutter-controls');
+        const inline = $('inline-controls');
+        controls.replaceChildren();
+        inline.replaceChildren();
+        const collapsedLines = new Set();
         for (const range of (ranges || []).sort((a, b) => a.start - b.start)) {
-          const value = editor.value.slice(range.start, range.end);
-          if (value !== 'true' && value !== 'false') continue;
           const line =
             editor.value.slice(0, range.start).split('\n').length - 1;
-          const column = columns.get(line) || 0;
-          columns.set(line, column + 1);
-          width = Math.max(width, (column + 1) * 24 + 4);
+          if (collapsedLines.has(line)) continue;
+          const value = editor.value.slice(range.start, range.end);
+          const name = range.path.join('.');
+          if (value[0] === '{' || value[0] === '[') {
+            const empty = /^[{[]\s*[}\]]$/.test(value);
+            const isSchema =
+              range.path.length === 1 && schemaObjects.includes(name);
+            if (empty && !isSchema) continue;
+            const expanded = value.includes('\n');
+            const folded = collapsedPaths.has(name);
+            const current = (config && config[name]) || {};
+            const children = isSchema ? knownChildren(name) : [];
+            const allKnownPresent =
+              isSchema &&
+              children.length > 0 &&
+              children.every((child) => Object.hasOwn(current, child));
+            const showMinus = isSchema ? !folded && allKnownPresent : expanded;
+            const fold = document.createElement('button');
+            fold.type = 'button';
+            fold.className = 'fold';
+            fold.textContent = showMinus ? '−' : '+';
+            fold.setAttribute('aria-expanded', String(!folded && expanded));
+            const verb = isSchema
+              ? showMinus
+                ? 'Hide default options of'
+                : 'Show all options of'
+              : showMinus
+              ? 'Collapse'
+              : 'Expand';
+            fold.setAttribute('aria-label', `${verb} ${name}`);
+            fold.title = `${verb} ${name}`;
+            fold.onclick = () => {
+              let next;
+              try {
+                next = readConfig();
+              } catch {
+                return;
+              }
+              if (!isSchema) {
+                if (expanded) collapsedPaths.add(name);
+                else collapsedPaths.delete(name);
+              } else if (folded) {
+                collapsedPaths.delete(name);
+              } else if (allKnownPresent) {
+                const before = JSON.stringify(next[name]);
+                for (const child of children)
+                  if (isDefaultValue([name, child], next[name]?.[child]))
+                    delete next[name][child];
+                if (JSON.stringify(next[name]) === before)
+                  collapsedPaths.add(name);
+              } else {
+                collapsedPaths.delete(name);
+                next[name] = next[name] || {};
+                for (const child of children)
+                  if (!Object.hasOwn(next[name], child))
+                    next[name][child] = childDefault(name, child);
+              }
+              const scrollTop = editor.scrollTop;
+              editor.value = formatConfig(next);
+              updateEditor();
+              editor.scrollTop = scrollTop;
+              syncGutterScroll();
+            };
+            fold.style.top = `${12 + line * 21 + 2}px`;
+            fold.style.left = '6px';
+            controls.append(fold);
+            if (!empty && !expanded) collapsedLines.add(line);
+            continue;
+          }
+          if (value !== 'true' && value !== 'false') continue;
+          const lineStart = editor.value.lastIndexOf('\n', range.end - 1) + 1;
+          const comma = editor.value[range.end] === ',' ? 1 : 0;
+          const endColumn = range.end - lineStart + comma;
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.checked = value === 'true';
           checkbox.dataset.start = range.start;
-          checkbox.setAttribute('aria-label', range.path.join('.'));
-          checkbox.title = `${range.path.join('.')}: ${value}`;
-          checkbox.style.top = `${12 + line * 21 + 2}px`;
-          checkbox.style.left = `${6 + column * 24}px`;
-          checkbox.onfocus = () => {
-            const top = 12 + line * 21;
-            if (top < editor.scrollTop) editor.scrollTop = top;
-            else if (top + 21 > editor.scrollTop + editor.clientHeight)
-              editor.scrollTop = top + 21 - editor.clientHeight;
-            syncBooleanScroll();
-          };
+          checkbox.setAttribute('aria-label', name);
+          checkbox.title = `${name}: ${value}`;
+          checkbox.style.top = `${12 + line * 21 + 3}px`;
+          checkbox.style.left = `${12 + endColumn * charWidth() + 5}px`;
           checkbox.onchange = () => {
-            // Replace just this token, preserving the rest of the JSON text.
-            editor.setRangeText(
-              String(checkbox.checked),
-              range.start,
-              range.end,
-              'preserve',
-            );
-            editor.dispatchEvent(new Event('input'));
-            toggles
-              .querySelector(`[data-start="${range.start}"]`)
+            let next;
+            try {
+              next = readConfig();
+            } catch {
+              return;
+            }
+            let target = next;
+            for (const key of range.path.slice(0, -1)) target = target?.[key];
+            if (target && typeof target === 'object')
+              target[range.path[range.path.length - 1]] = checkbox.checked;
+            const scrollTop = editor.scrollTop;
+            editor.value = formatConfig(next);
+            updateEditor();
+            editor.scrollTop = scrollTop;
+            syncGutterScroll();
+            inline
+              .querySelector(`[aria-label="${name}"]`)
               ?.focus({ preventScroll: true });
           };
-          toggles.append(checkbox);
+          inline.append(checkbox);
         }
-        $('boolean-gutter').style.flexBasis = `${width}px`;
-        syncBooleanScroll();
+        $('editor-gutter').style.flexBasis = '28px';
+        syncGutterScroll();
+        syncEditorScroll();
       }
-      function syncBooleanScroll() {
+      function syncGutterScroll() {
         $(
-          'boolean-toggles',
+          'gutter-controls',
         ).style.transform = `translateY(${-editor.scrollTop}px)`;
       }
-      editor.addEventListener('scroll', syncBooleanScroll);
-      $('boolean-gutter').addEventListener(
+      function syncEditorScroll() {
+        const highlight = $('config-highlight');
+        highlight.scrollTop = editor.scrollTop;
+        highlight.scrollLeft = editor.scrollLeft;
+        $('inline-controls').style.transform = `translate(${-editor.scrollLeft}px, ${-editor.scrollTop}px)`;
+      }
+      const escapeHtml = (text) =>
+        text.replace(
+          /[&<>]/g,
+          (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char]),
+        );
+      let highlightedJSON;
+      function renderHighlight(config, ranges) {
+        const text = editor.value;
+        if (highlightedJSON === text) return syncEditorScroll();
+        highlightedJSON = text;
+        const dim = new Array(text.length).fill(false);
+        const dimRange = (from, to) => {
+          for (let i = from; i < to; i++) dim[i] = true;
+        };
+        for (const match of text.matchAll(
+          /("(?:[^"\\]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+        ))
+          if (match[1] === undefined)
+            dimRange(match.index, match.index + match[0].length);
+        for (const range of ranges || []) {
+          const value = text.slice(range.start, range.end);
+          const folded =
+            (value[0] === '{' || value[0] === '[') &&
+            collapsedPaths.has(range.path.join('.'));
+          if (folded) dimRange(range.start, range.end);
+          if (
+            config &&
+            isDefaultValue(
+              range.path,
+              range.path.reduce((node, key) => node?.[key], config),
+            )
+          )
+            dimRange(range.keyStart, range.end);
+        }
+        let html = '';
+        let run = '';
+        let runDim = false;
+        const flush = () => {
+          if (!run) return;
+          html += runDim ? `<span class="dim">${escapeHtml(run)}</span>` : escapeHtml(run);
+          run = '';
+        };
+        for (let i = 0; i < text.length; i++) {
+          if (dim[i] !== runDim) {
+            flush();
+            runDim = dim[i];
+          }
+          run += text[i];
+        }
+        flush();
+        $('config-highlight').innerHTML = html + '\n';
+        syncEditorScroll();
+      }
+      editor.addEventListener('scroll', syncGutterScroll);
+      editor.addEventListener('scroll', syncEditorScroll);
+      $('editor-gutter').addEventListener(
         'wheel',
         (event) => {
           if (event.ctrlKey) return;
@@ -1114,8 +1788,6 @@ Waiting for a recording…</pre
         { passive: false },
       );
       function updateEditor() {
-        const tools = $('field-tools');
-        tools.replaceChildren();
         let config;
         try {
           config = readConfig();
@@ -1125,137 +1797,74 @@ Waiting for a recording…</pre
           $('config-error').textContent = error.message;
           editor.setAttribute('aria-invalid', 'true');
         }
-        for (const id of ['apply', 'format-config', 'add-field', 'add-option'])
-          $(id).disabled = !config;
+        $('format-config').disabled = !config;
+        $('format-config').hidden =
+          !config || formatConfig(config) === editor.value;
+        $('apply').disabled =
+          !config || JSON.stringify(config) === appliedConfigJSON;
+        updateCopyButton(config);
         const ranges = config ? propertyRanges() : undefined;
-        renderBooleanCheckboxes(ranges);
-        if (!config) return;
-        const picker = $('add-option');
-        const previous = picker.value;
-        picker.replaceChildren();
-        for (const path of fields.keys()) {
-          let target = config;
-          const keys = path.split('.');
-          const key = keys.pop();
-          for (const part of keys) {
-            if (target === undefined) break;
-            target =
-              target !== null &&
-              typeof target === 'object' &&
-              !Array.isArray(target)
-                ? target[part]
-                : null;
-          }
-          // Never replace an existing scalar parent just to add a child.
-          if (
-            target === null ||
-            (target !== undefined &&
-              (typeof target !== 'object' ||
-                Array.isArray(target) ||
-                Object.hasOwn(target, key)))
-          )
-            continue;
-          picker.add(new Option(path, path));
+        renderGutter(config, ranges);
+        renderHighlight(config, ranges);
+      }
+      let appliedConfigJSON = null;
+      function updateApplyState() {
+        let config;
+        try {
+          config = readConfig();
+        } catch {
+          config = null;
         }
-        if ([...picker.options].some((option) => option.value === previous))
-          picker.value = previous;
-        $('add-field').disabled = picker.options.length === 0;
-        const cursor = editor.selectionStart;
-        const selectedField = ranges
-          .filter((range) => cursor >= range.keyStart && cursor <= range.end)
-          .sort((a, b) => a.end - a.keyStart - (b.end - b.keyStart))[0];
-        if (!selectedField) {
-          tools.textContent = 'Select a JSON field to show its controls.';
+        $('apply').disabled =
+          !config || JSON.stringify(config) === appliedConfigJSON;
+      }
+      let copyResetTimer;
+      function updateCopyButton(config) {
+        const button = $('copy-options');
+        if (button.classList.contains('copied')) return;
+        const count = config
+          ? Object.keys(nonDefaultOptions(config)).length
+          : 0;
+        button.hidden = !count;
+        button.textContent = `Copy record options (${count} change${
+          count === 1 ? '' : 's'
+        } vs. default)`;
+      }
+      editor.value = formatConfig(presentedDefaults());
+      editor.addEventListener('input', updateEditor);
+      $('format-config').onclick = () => {
+        editor.value = formatConfig(readConfig());
+        updateEditor();
+      };
+      $('copy-options').onclick = async (event) => {
+        event.stopPropagation();
+        let config;
+        try {
+          config = readConfig();
+        } catch {
           return;
         }
-        const path = selectedField.path;
-        const label = document.createElement('code');
-        label.textContent = path.join('.');
-        tools.append(label);
-        const current = path.reduce((value, key) => value[key], config);
-        const spec = fields.get(path.join('.'));
-        if (spec?.choices) {
-          const choices = document.createElement('select');
-          choices.setAttribute('aria-label', `${path.join('.')} value`);
-          const values = [...spec.choices];
-          if (
-            !values.some(
-              (value) => JSON.stringify(value) === JSON.stringify(current),
-            )
-          )
-            values.unshift(current);
-          values.forEach((value, index) =>
-            choices.add(new Option(JSON.stringify(value), String(index))),
-          );
-          choices.value = String(
-            values.findIndex(
-              (value) => JSON.stringify(value) === JSON.stringify(current),
-            ),
-          );
-          choices.onchange = () =>
-            changeField(path, values[Number(choices.value)]);
-          tools.append(choices);
+        const button = $('copy-options');
+        // A placeholder emit (a function, so this is a JS object literal, not
+        // JSON) to show it sits beside the options; added on copy only.
+        const emit = '  emit(event) {\n    console.log(event);\n  },';
+        const body = JSON.stringify(nonDefaultOptions(config), null, 2);
+        const recordOptions =
+          body === '{}'
+            ? `{\n${emit}\n}`
+            : body.replace(/\n\}$/, `,\n${emit}\n}`);
+        try {
+          await navigator.clipboard.writeText(recordOptions);
+          button.textContent = 'Copied ✓';
+          button.classList.add('copied');
+          clearTimeout(copyResetTimer);
+          copyResetTimer = setTimeout(() => {
+            button.classList.remove('copied');
+            updateEditor();
+          }, 1500);
+        } catch {
+          button.textContent = 'Copy failed — select and copy manually';
         }
-        const remove = document.createElement('button');
-        remove.textContent = 'Remove option';
-        remove.onclick = () => changeField(path, undefined, true);
-        tools.append(remove);
-      }
-      function changeField(path, value, remove = false) {
-        const config = readConfig();
-        let target = config;
-        for (const key of path.slice(0, -1)) {
-          if (!Object.hasOwn(target, key))
-            Object.defineProperty(target, key, {
-              value: {},
-              enumerable: true,
-              configurable: true,
-              writable: true,
-            });
-          target = target[key];
-        }
-        const key = path[path.length - 1];
-        if (remove && Array.isArray(target)) target.splice(Number(key), 1);
-        else if (remove) delete target[key];
-        else
-          Object.defineProperty(target, key, {
-            value,
-            enumerable: true,
-            configurable: true,
-            writable: true,
-          });
-        editor.value = JSON.stringify(config, null, 2);
-        const range = propertyRanges().find(
-          (range) => JSON.stringify(range.path) === JSON.stringify(path),
-        );
-        editor.focus();
-        editor.setSelectionRange(range?.start || 0, range?.start || 0);
-        updateEditor();
-        status('Settings changed — Apply & restart to use them.');
-      }
-      editor.value = JSON.stringify(
-        {
-          maskInputOptions: Object.fromEntries(
-            inputTypes.map((type) => [type, true]),
-          ),
-          sampling: { mousemove: true, mouseInteraction: true, input: 'all' },
-        },
-        null,
-        2,
-      );
-      editor.addEventListener('input', () => {
-        updateEditor();
-        status('Settings changed — Apply & restart to use them.');
-      });
-      for (const event of ['click', 'keyup', 'select'])
-        editor.addEventListener(event, updateEditor);
-      $('add-field').onclick = () => {
-        const path = $('add-option').value;
-        if (path) changeField(path.split('.'), fields.get(path).example);
-      };
-      $('format-config').onclick = () => {
-        editor.value = JSON.stringify(readConfig(), null, 2);
-        updateEditor();
       };
       updateEditor();
       window.addEventListener('beforeunload', stop);

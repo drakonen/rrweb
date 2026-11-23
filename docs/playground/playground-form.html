@@ -11,8 +11,16 @@
       body {
         margin: 0;
         padding: 20px;
+        min-height: 100vh;
         color: #182636;
         font: 14px system-ui, sans-serif;
+        background: repeating-linear-gradient(
+          -45deg,
+          #fbfcfd,
+          #fbfcfd 11px,
+          #f0f3f7 11px,
+          #f0f3f7 22px
+        );
       }
       form {
         display: grid;
@@ -57,6 +65,37 @@
         form {
           grid-template-columns: 1fr;
         }
+      }
+      #dom-changes {
+        margin-top: 28px;
+        padding-top: 18px;
+        border-top: 1px solid #d4dce4;
+      }
+      #dom-changes h2 {
+        margin: 0 0 12px;
+        font-size: 15px;
+      }
+      .dom-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      #squares {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .square {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border: 1px solid #aebac7;
+        border-radius: 6px;
+        background: #eef2f7;
+        font-weight: 600;
       }
     </style>
   </head>
@@ -149,5 +188,71 @@ pre value</textarea
         <button type="submit">Submit</button>
       </div>
     </form>
+    <section id="dom-changes">
+      <h2>DOM changes</h2>
+      <div class="dom-buttons">
+        <button id="add-attribute" type="button">Add attribute</button>
+        <button id="add-style" type="button">Add style attribute</button>
+        <button id="remove-style" type="button">Remove style attribute</button>
+        <button id="modify-text" type="button">Modify text</button>
+        <button id="add-squares" type="button">Add 5 squares</button>
+        <button id="remove-square" type="button">Remove square</button>
+      </div>
+      <div id="squares" aria-label="Mutating squares">
+        <div class="square">A</div>
+        <div class="square">B</div>
+        <div class="square">C</div>
+        <div class="square">D</div>
+        <div class="square">E</div>
+      </div>
+    </section>
+    <script>
+      const squares = document.getElementById('squares');
+      const colors = [
+        'tomato',
+        'gold',
+        'mediumseagreen',
+        'cornflowerblue',
+        'orchid',
+        'orange',
+        'teal',
+        'crimson',
+      ];
+      const pick = (list) => list[Math.floor(Math.random() * list.length)];
+      const randomSquare = () => pick([...squares.children]);
+      const letterAt = (index) =>
+        String.fromCharCode(65 + (index % 26)).repeat(
+          Math.floor(index / 26) + 1,
+        );
+      let attributeCount = 0;
+      document.getElementById('add-attribute').onclick = () => {
+        attributeCount += 1;
+        randomSquare()?.setAttribute('data-marked', attributeCount);
+      };
+      document.getElementById('add-style').onclick = () => {
+        randomSquare()?.setAttribute(
+          'style',
+          `background-color:${pick(colors)};`,
+        );
+      };
+      document.getElementById('remove-style').onclick = () => {
+        for (const square of squares.children) square.removeAttribute('style');
+      };
+      document.getElementById('modify-text').onclick = () => {
+        const square = randomSquare();
+        if (square) square.textContent += square.textContent.slice(-1);
+      };
+      document.getElementById('add-squares').onclick = () => {
+        for (let count = 0; count < 5; count++) {
+          const square = document.createElement('div');
+          square.className = 'square';
+          square.textContent = letterAt(squares.children.length);
+          squares.append(square);
+        }
+      };
+      document.getElementById('remove-square').onclick = () => {
+        squares.lastElementChild?.remove();
+      };
+    </script>
   </body>
 </html>
