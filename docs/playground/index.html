@@ -262,10 +262,6 @@
         color: var(--text);
         font-weight: 600;
       }
-      #raw-count {
-        color: var(--muted);
-        font-weight: 400;
-      }
       .linklike {
         border: 0;
         padding: 0;
@@ -302,8 +298,19 @@
         opacity: 0.75;
         font-variant-numeric: tabular-nums;
       }
+      .events-section {
+        display: flex;
+        flex-direction: column;
+      }
+      .events-section #events-panel {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-height: 0;
+      }
       #event-list {
-        height: 470px;
+        flex: 1;
+        min-height: 300px;
         overflow: auto;
         border: 1px solid var(--border);
         border-radius: 5px;
@@ -595,7 +602,7 @@
           ></iframe>
         </div>
       </section>
-      <section>
+      <section class="events-section">
         <h2>Captured events</h2>
         <div class="toolbar tabs" role="tablist" aria-label="Recording viewer">
           <button
@@ -622,7 +629,7 @@
             aria-controls="raw-panel"
             tabindex="-1"
           >
-            Raw JSON <span id="raw-count"></span>
+            Raw JSON
           </button>
         </div>
         <div id="events-panel" role="tabpanel" aria-labelledby="events-tab">
@@ -696,6 +703,7 @@
       const events = [];
       let stopRecording;
       let selected = -1;
+      let followLatest = true;
       let generation = 0;
       let renderPending = false;
       let scrollToLatest = false;
@@ -802,13 +810,12 @@
         }
       };
       function renderRawJSON() {
-        if (!$('raw-panel').hidden)
-          $('raw-json').textContent = JSON.stringify(events, null, 2);
-      }
-      function updateRawCount() {
-        const active = $('raw-tab').getAttribute('aria-selected') === 'true';
-        $('raw-count').textContent =
-          active && events.length ? `(${events.length})` : '';
+        if ($('raw-panel').hidden) return;
+        $('raw-json').textContent = JSON.stringify(events, null, 2);
+        const kib = (JSON.stringify(events).length / 1024).toFixed(1);
+        $('copy-json').textContent = `Copy (${events.length} event${
+          events.length === 1 ? '' : 's'
+        }, ${kib} KiB)`;
       }
       function selectViewer(view) {
         for (const name of viewerTabs) {
@@ -820,7 +827,6 @@
         if (view === 'player') loadPlayer();
         else clearPlayer();
         renderRawJSON();
-        updateRawCount();
       }
       for (const name of viewerTabs) {
         $(`${name}-tab`).onclick = () => selectViewer(name);
@@ -870,9 +876,10 @@
       }
       function relTime(ms) {
         const seconds = Math.max(0, Math.floor(ms / 1000));
-        return [seconds / 3600, (seconds / 60) % 60, seconds % 60]
-          .map((unit) => String(Math.floor(unit)).padStart(2, '0'))
-          .join(':');
+        const hours = Math.floor(seconds / 3600);
+        const pad = (unit) => String(Math.floor(unit)).padStart(2, '0');
+        const mmss = `${pad((seconds / 60) % 60)}:${pad(seconds % 60)}`;
+        return hours ? `${hours}:${mmss}` : mmss;
       }
       function part(className, text) {
         const span = document.createElement('span');
@@ -1049,8 +1056,9 @@
         const visible = events
           .map((event, index) => ({ event, index }))
           .filter(({ event }) => matches(event));
+        if (followLatest && visible.length)
+          selected = visible[visible.length - 1].index;
         renderFilters();
-        updateRawCount();
         list.replaceChildren();
         // Keep the rendered list limited to the latest 300 matching events.
         for (const { event, index } of visible.slice(-300)) {
@@ -1060,6 +1068,7 @@
           button.append(...summaryParts(event, index));
           button.setAttribute('aria-expanded', String(index === selected));
           button.onclick = () => {
+            followLatest = false;
             selected = index === selected ? -1 : index;
             render();
           };
@@ -1125,6 +1134,7 @@
           'Recording restarted. Load latest events when ready.';
         events.length = 0;
         selected = -1;
+        followLatest = true;
         render();
         status('Loading page and recorder…');
         frame.onload = () => {
@@ -1278,9 +1288,9 @@
           blockSelector: null,
           ignoreClass: 'rr-ignore',
           ignoreSelector: null,
-          ignoreCSSAttributes: [],
           recordDOM: true,
           slimDOMOptions: {},
+          ignoreCSSAttributes: [],
           inlineStylesheet: true,
           recordCanvas: false,
           dataURLOptions: {},
