@@ -187,6 +187,8 @@ pre value</textarea
         <button id="add-style" type="button">Add style attribute</button>
         <button id="remove-style" type="button">Remove style attribute</button>
         <button id="modify-text" type="button">Modify text</button>
+        <button id="add-squares" type="button">Add 5 squares</button>
+        <button id="remove-square" type="button">Remove square</button>
       </div>
       <div id="squares" aria-label="Mutating squares">
         <div class="square">A</div>
@@ -198,22 +200,50 @@ pre value</textarea
     </section>
     <script>
       const squares = document.getElementById('squares');
+      const colors = [
+        'tomato',
+        'gold',
+        'mediumseagreen',
+        'cornflowerblue',
+        'orchid',
+        'orange',
+        'teal',
+        'crimson',
+      ];
+      const pick = (list) => list[Math.floor(Math.random() * list.length)];
+      const randomSquare = () => pick([...squares.children]);
+      const letterAt = (index) =>
+        String.fromCharCode(65 + (index % 26)).repeat(
+          Math.floor(index / 26) + 1,
+        );
       let attributeCount = 0;
       document.getElementById('add-attribute').onclick = () => {
         attributeCount += 1;
-        for (const square of squares.children)
-          square.setAttribute('data-marked', attributeCount);
+        randomSquare()?.setAttribute('data-marked', attributeCount);
       };
       document.getElementById('add-style').onclick = () => {
-        for (const square of squares.children)
-          square.setAttribute('style', 'background-color:red;');
+        randomSquare()?.setAttribute(
+          'style',
+          `background-color:${pick(colors)};`,
+        );
       };
       document.getElementById('remove-style').onclick = () => {
         for (const square of squares.children) square.removeAttribute('style');
       };
       document.getElementById('modify-text').onclick = () => {
-        for (const square of squares.children)
-          square.textContent += square.textContent.slice(-1);
+        const square = randomSquare();
+        if (square) square.textContent += square.textContent.slice(-1);
+      };
+      document.getElementById('add-squares').onclick = () => {
+        for (let count = 0; count < 5; count++) {
+          const square = document.createElement('div');
+          square.className = 'square';
+          square.textContent = letterAt(squares.children.length);
+          squares.append(square);
+        }
+      };
+      document.getElementById('remove-square').onclick = () => {
+        squares.lastElementChild?.remove();
       };
     </script>
   </body>

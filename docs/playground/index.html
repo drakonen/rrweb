@@ -198,6 +198,9 @@
         border: 0;
         background: #fff;
       }
+      #form {
+        height: 940px;
+      }
       #settings summary {
         display: flex;
         align-items: center;
@@ -240,9 +243,28 @@
       [hidden] {
         display: none !important;
       }
-      [role='tab'][aria-selected='true'] {
-        background: var(--selected);
-        border-color: var(--brand);
+      .tabs {
+        gap: 2px;
+        margin-bottom: 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .tabs [role='tab'] {
+        border: 1px solid transparent;
+        border-bottom: 0;
+        border-radius: 7px 7px 0 0;
+        background: transparent;
+        color: var(--muted);
+        margin-bottom: -1px;
+      }
+      .tabs [role='tab'][aria-selected='true'] {
+        border-color: var(--border);
+        background: var(--surface);
+        color: var(--text);
+        font-weight: 600;
+      }
+      #raw-count {
+        color: var(--muted);
+        font-weight: 400;
       }
       #player-host iframe {
         height: 550px;
@@ -270,9 +292,6 @@
         margin-left: 4px;
         opacity: 0.75;
         font-variant-numeric: tabular-nums;
-      }
-      #always-shown {
-        align-self: center;
       }
       #event-list {
         height: 470px;
@@ -569,7 +588,7 @@
       </section>
       <section>
         <h2>Captured events</h2>
-        <div class="toolbar" role="tablist" aria-label="Recording viewer">
+        <div class="toolbar tabs" role="tablist" aria-label="Recording viewer">
           <button
             id="events-tab"
             role="tab"
@@ -600,7 +619,6 @@
         <div id="events-panel" role="tabpanel" aria-labelledby="events-tab">
           <div class="toolbar">
             <div id="event-filters" role="group" aria-label="Filter events"></div>
-            <span id="always-shown" class="muted">+ meta &amp; snapshots</span>
           </div>
           <div id="event-list" aria-label="Captured event list"></div>
         </div>
@@ -749,6 +767,11 @@
         if (!$('raw-panel').hidden)
           $('raw-json').textContent = JSON.stringify(events, null, 2);
       }
+      function updateRawCount() {
+        const active = $('raw-tab').getAttribute('aria-selected') === 'true';
+        $('raw-count').textContent =
+          active && events.length ? `(${events.length})` : '';
+      }
       function selectViewer(view) {
         for (const name of viewerTabs) {
           const active = name === view;
@@ -759,6 +782,7 @@
         if (view === 'player') loadPlayer();
         else clearPlayer();
         renderRawJSON();
+        updateRawCount();
       }
       for (const name of viewerTabs) {
         $(`${name}-tab`).onclick = () => selectViewer(name);
@@ -833,8 +857,20 @@
               chip('MouseInteractions', event.data.type, 130 + event.data.type * 29),
             );
         }
-        if (event.data && event.data.id !== undefined)
-          parts.push(part('target', `node ${event.data.id}`));
+        let targetId = event.data && event.data.id;
+        if (event.type === 3 && event.data.source === 0) {
+          const d = event.data;
+          const changes = [
+            ...(d.texts || []),
+            ...(d.attributes || []),
+            ...(d.removes || []),
+            ...(d.adds || []),
+          ];
+          if (changes.length === 1)
+            targetId = changes[0].id ?? changes[0].node?.id;
+        }
+        if (targetId !== undefined)
+          parts.push(part('target', `node ${targetId}`));
         return parts;
       }
       function annotation(event, path, value) {
@@ -963,7 +999,7 @@
           .map((event, index) => ({ event, index }))
           .filter(({ event }) => matches(event));
         renderFilters();
-        $('raw-count').textContent = events.length ? `(${events.length})` : '';
+        updateRawCount();
         list.replaceChildren();
         // Keep the rendered list limited to the latest 300 matching events.
         for (const { event, index } of visible.slice(-300)) {
@@ -1566,16 +1602,23 @@
           checkbox.style.top = `${12 + line * 21 + 3}px`;
           checkbox.style.left = `${12 + endColumn * charWidth() + 5}px`;
           checkbox.onchange = () => {
-            // Replace just this token, preserving the rest of the JSON text.
-            editor.setRangeText(
-              String(checkbox.checked),
-              range.start,
-              range.end,
-              'preserve',
-            );
-            editor.dispatchEvent(new Event('input'));
+            let next;
+            try {
+              next = readConfig();
+            } catch {
+              return;
+            }
+            let target = next;
+            for (const key of range.path.slice(0, -1)) target = target?.[key];
+            if (target && typeof target === 'object')
+              target[range.path[range.path.length - 1]] = checkbox.checked;
+            const scrollTop = editor.scrollTop;
+            editor.value = formatConfig(next);
+            updateEditor();
+            editor.scrollTop = scrollTop;
+            syncGutterScroll();
             inline
-              .querySelector(`[data-start="${range.start}"]`)
+              .querySelector(`[aria-label="${name}"]`)
               ?.focus({ preventScroll: true });
           };
           inline.append(checkbox);
