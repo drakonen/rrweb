@@ -629,7 +629,10 @@
           hidden
         >
           <div class="toolbar">
-            <button id="refresh-player">Load latest events</button>
+            <button id="live-toggle" aria-pressed="false">Live: off</button>
+            <button id="reload-player" hidden title="Rebuild the player from the full recording">
+              Reload
+            </button>
             <span
               id="player-status"
               class="muted"
@@ -694,6 +697,8 @@
       let player;
       let playerFrame;
       let playerLoad = 0;
+      let playerLive = false;
+      let playerLoadedCount = 0;
       function clearPlayer() {
         playerLoad++;
         if (player) {
@@ -704,11 +709,16 @@
         playerFrame = undefined;
         $('player-host').replaceChildren();
       }
+      function updateReloadButton() {
+        $('reload-player').hidden =
+          playerLive || !player || events.length <= playerLoadedCount;
+      }
       function loadPlayer() {
         clearPlayer();
         if (events.length < 2 || !events.some((event) => event.type === 2)) {
           $('player-status').textContent =
-            'Waiting for a full snapshot. Load latest events once recording is ready.';
+            'Waiting for a full snapshot — interact with the example page.';
+          updateReloadButton();
           return;
         }
         const snapshot = JSON.parse(JSON.stringify(events));
@@ -734,12 +744,20 @@
                 events: snapshot,
                 width: iframe.clientWidth,
                 height: 470,
-                autoPlay: false,
+                autoPlay: playerLive,
+                liveMode: playerLive,
               },
             });
-            $(
-              'player-status',
-            ).textContent = `Loaded ${snapshot.length} events.`;
+            if (playerLive) {
+              player.getReplayer().startLive(snapshot[0].timestamp);
+              for (let i = snapshot.length; i < events.length; i++)
+                player.addEvent(events[i]);
+            }
+            playerLoadedCount = events.length;
+            $('player-status').textContent = playerLive
+              ? 'Live — new events stream in as you interact.'
+              : `Loaded ${snapshot.length} events.`;
+            updateReloadButton();
           } catch (error) {
             clearPlayer();
             $('player-status').textContent = error.message;
@@ -805,7 +823,13 @@
           $(`${next}-tab`).focus();
         };
       }
-      $('refresh-player').onclick = loadPlayer;
+      $('reload-player').onclick = loadPlayer;
+      $('live-toggle').onclick = () => {
+        playerLive = !playerLive;
+        $('live-toggle').setAttribute('aria-pressed', String(playerLive));
+        $('live-toggle').textContent = playerLive ? 'Live: on' : 'Live: off';
+        if (!$('player-panel').hidden) loadPlayer();
+      };
       new ResizeObserver(() => {
         if (player && playerFrame?.clientWidth) {
           player.$set({ width: playerFrame.clientWidth });
@@ -1032,6 +1056,13 @@
       function capture(event) {
         events.push(event);
         scrollToLatest = true;
+        if (playerLive && player) {
+          try {
+            player.addEvent(event);
+          } catch {}
+          playerLoadedCount = events.length;
+        }
+        if (player) updateReloadButton();
         if (!renderPending) {
           renderPending = true;
           requestAnimationFrame(render);
