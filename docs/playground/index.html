@@ -165,16 +165,25 @@
       #config-highlight .dim {
         color: #6f7f99;
       }
+      #inline-controls {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      #inline-controls input {
+        position: absolute;
+        width: 15px;
+        height: 15px;
+        margin: 0;
+        accent-color: #80b4fa;
+        pointer-events: auto;
+        cursor: pointer;
+      }
       #config-error {
         color: var(--error);
         overflow-wrap: anywhere;
-      }
-      #field-tools {
-        min-height: 36px;
-        overflow-wrap: anywhere;
-      }
-      #field-tools code {
-        flex-basis: 100%;
       }
       .iframe-shell {
         overflow: hidden;
@@ -236,6 +245,10 @@
       }
       #settings[open] summary {
         margin-bottom: 14px;
+      }
+      #settings summary #copy-options.copied {
+        border-color: #2f7d4f;
+        color: #2f7d4f;
       }
       #status {
         font-weight: 600;
@@ -511,6 +524,7 @@
           <summary>
             <h2>Recorder settings</h2>
             <div id="status" role="status" aria-live="polite">Loading…</div>
+            <button id="copy-options" hidden>Copy config</button>
           </summary>
         <label for="config">Recorder options (JSON)</label>
         <a
@@ -530,18 +544,13 @@
               wrap="off"
               aria-describedby="config-help config-error"
             ></textarea>
+            <div id="inline-controls"></div>
           </div>
           <button id="format-config" hidden>Format JSON</button>
         </div>
         <p id="config-error" role="status" aria-live="polite"></p>
-        <div
-          id="field-tools"
-          class="toolbar"
-          aria-label="Selected field controls"
-        ></div>
         <div class="toolbar">
           <button class="primary" id="apply">Apply &amp; restart</button>
-          <button id="copy-options">Copy changed options</button>
         </div>
         </details>
       </section>
@@ -1254,6 +1263,21 @@
           notes.push('no effect while recordDOM is false');
         if (key === 'checkoutEveryNms' || key === 'checkoutEveryNth')
           notes.push('checkout occurs on the next event past the threshold');
+        if (key === 'recordAfter' || key === 'sampling.input') {
+          const others = fields
+            .get(key)
+            .choices.filter((choice) => choice !== value);
+          if (others.length)
+            notes.push(`or ${others.map((c) => JSON.stringify(c)).join(' / ')}`);
+        }
+        if (key === 'sampling.canvas') notes.push('"all" or a number');
+        if (
+          key === 'slimDOMOptions' &&
+          value &&
+          typeof value === 'object' &&
+          !Object.keys(value).length
+        )
+          notes.push('or true / "all" to slim the DOM');
         return notes.length ? `  // ${notes.join(' · ')}` : '';
       }
       function formatConfig(config) {
@@ -1416,24 +1440,28 @@
       function childDefault(parent, child) {
         return structuredClone(baselineValue(`${parent}.${child}`));
       }
+      let measuredCharWidth = 0;
+      function charWidth() {
+        if (measuredCharWidth) return measuredCharWidth;
+        const probe = document.createElement('span');
+        probe.textContent = '0000000000';
+        probe.style.cssText =
+          'position:absolute;visibility:hidden;white-space:pre;font:13px/21px monospace';
+        document.body.append(probe);
+        measuredCharWidth = probe.getBoundingClientRect().width / 10 || 7.8;
+        probe.remove();
+        return measuredCharWidth;
+      }
       let renderedGutterJSON;
       function renderGutter(config, ranges) {
         const source = ranges ? editor.value : undefined;
         if (renderedGutterJSON === source) return;
         renderedGutterJSON = source;
         const controls = $('gutter-controls');
+        const inline = $('inline-controls');
         controls.replaceChildren();
-        const columns = new Map();
+        inline.replaceChildren();
         const collapsedLines = new Set();
-        let width = 28;
-        function place(control, line) {
-          const column = columns.get(line) || 0;
-          columns.set(line, column + 1);
-          width = Math.max(width, (column + 1) * 24 + 4);
-          control.style.top = `${12 + line * 21 + 2}px`;
-          control.style.left = `${6 + column * 24}px`;
-          controls.append(control);
-        }
         for (const range of (ranges || []).sort((a, b) => a.start - b.start)) {
           const line =
             editor.value.slice(0, range.start).split('\n').length - 1;
@@ -1500,24 +1528,24 @@
               editor.scrollTop = scrollTop;
               syncGutterScroll();
             };
-            place(fold, line);
+            fold.style.top = `${12 + line * 21 + 2}px`;
+            fold.style.left = '6px';
+            controls.append(fold);
             if (!empty && !expanded) collapsedLines.add(line);
             continue;
           }
           if (value !== 'true' && value !== 'false') continue;
+          const lineStart = editor.value.lastIndexOf('\n', range.end - 1) + 1;
+          const comma = editor.value[range.end] === ',' ? 1 : 0;
+          const endColumn = range.end - lineStart + comma;
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.checked = value === 'true';
           checkbox.dataset.start = range.start;
           checkbox.setAttribute('aria-label', name);
           checkbox.title = `${name}: ${value}`;
-          checkbox.onfocus = () => {
-            const top = 12 + line * 21;
-            if (top < editor.scrollTop) editor.scrollTop = top;
-            else if (top + 21 > editor.scrollTop + editor.clientHeight)
-              editor.scrollTop = top + 21 - editor.clientHeight;
-            syncGutterScroll();
-          };
+          checkbox.style.top = `${12 + line * 21 + 3}px`;
+          checkbox.style.left = `${12 + endColumn * charWidth() + 5}px`;
           checkbox.onchange = () => {
             // Replace just this token, preserving the rest of the JSON text.
             editor.setRangeText(
@@ -1527,14 +1555,15 @@
               'preserve',
             );
             editor.dispatchEvent(new Event('input'));
-            controls
+            inline
               .querySelector(`[data-start="${range.start}"]`)
               ?.focus({ preventScroll: true });
           };
-          place(checkbox, line);
+          inline.append(checkbox);
         }
-        $('editor-gutter').style.flexBasis = `${width}px`;
+        $('editor-gutter').style.flexBasis = '28px';
         syncGutterScroll();
+        syncEditorScroll();
       }
       function syncGutterScroll() {
         $(
@@ -1545,6 +1574,7 @@
         const highlight = $('config-highlight');
         highlight.scrollTop = editor.scrollTop;
         highlight.scrollLeft = editor.scrollLeft;
+        $('inline-controls').style.transform = `translate(${-editor.scrollLeft}px, ${-editor.scrollTop}px)`;
       }
       const escapeHtml = (text) =>
         text.replace(
@@ -1618,8 +1648,6 @@
         { passive: false },
       );
       function updateEditor() {
-        const tools = $('field-tools');
-        tools.replaceChildren();
         let config;
         try {
           config = readConfig();
@@ -1629,111 +1657,60 @@
           $('config-error').textContent = error.message;
           editor.setAttribute('aria-invalid', 'true');
         }
-        for (const id of ['apply', 'format-config', 'copy-options'])
+        for (const id of ['apply', 'format-config'])
           $(id).disabled = !config;
         $('format-config').hidden =
           !config || formatConfig(config) === editor.value;
+        updateCopyButton(config);
         const ranges = config ? propertyRanges() : undefined;
         renderGutter(config, ranges);
         renderHighlight(config, ranges);
-        if (!config) return;
-        const cursor = editor.selectionStart;
-        const selectedField = ranges
-          .filter((range) => cursor >= range.keyStart && cursor <= range.end)
-          .sort((a, b) => a.end - a.keyStart - (b.end - b.keyStart))[0];
-        if (!selectedField) {
-          tools.textContent = 'Select a JSON field to show its controls.';
-          return;
-        }
-        const path = selectedField.path;
-        const label = document.createElement('code');
-        label.textContent = path.join('.');
-        tools.append(label);
-        const current = path.reduce((value, key) => value[key], config);
-        const spec = fields.get(path.join('.'));
-        if (spec?.choices) {
-          const choices = document.createElement('select');
-          choices.setAttribute('aria-label', `${path.join('.')} value`);
-          const values = [...spec.choices];
-          if (
-            !values.some(
-              (value) => JSON.stringify(value) === JSON.stringify(current),
-            )
-          )
-            values.unshift(current);
-          values.forEach((value, index) =>
-            choices.add(new Option(JSON.stringify(value), String(index))),
-          );
-          choices.value = String(
-            values.findIndex(
-              (value) => JSON.stringify(value) === JSON.stringify(current),
-            ),
-          );
-          choices.onchange = () =>
-            changeField(path, values[Number(choices.value)]);
-          tools.append(choices);
-        }
-        const remove = document.createElement('button');
-        remove.textContent = 'Remove option';
-        remove.onclick = () => changeField(path, undefined, true);
-        tools.append(remove);
       }
-      function changeField(path, value, remove = false) {
-        const config = readConfig();
-        let target = config;
-        for (const key of path.slice(0, -1)) {
-          if (!Object.hasOwn(target, key))
-            Object.defineProperty(target, key, {
-              value: {},
-              enumerable: true,
-              configurable: true,
-              writable: true,
-            });
-          target = target[key];
-        }
-        const key = path[path.length - 1];
-        if (remove && Array.isArray(target)) target.splice(Number(key), 1);
-        else if (remove) delete target[key];
-        else
-          Object.defineProperty(target, key, {
-            value,
-            enumerable: true,
-            configurable: true,
-            writable: true,
-          });
-        editor.value = formatConfig(config);
-        const range = propertyRanges().find(
-          (range) => JSON.stringify(range.path) === JSON.stringify(path),
-        );
-        editor.focus();
-        editor.setSelectionRange(range?.start || 0, range?.start || 0);
-        updateEditor();
-        status('Settings changed — Apply & restart to use them.');
+      const presetChangesJSON = JSON.stringify(
+        nonDefaultOptions(presentedDefaults()),
+      );
+      let copyResetTimer;
+      function updateCopyButton(config) {
+        const button = $('copy-options');
+        if (button.classList.contains('copied')) return;
+        const changes = config ? nonDefaultOptions(config) : {};
+        const count = Object.keys(changes).length;
+        button.hidden = !config || JSON.stringify(changes) === presetChangesJSON;
+        button.textContent = !count
+          ? 'Copy config (all defaults)'
+          : `Copy config (${count} change${count === 1 ? '' : 's'} from default)`;
       }
       editor.value = formatConfig(presentedDefaults());
       editor.addEventListener('input', () => {
         updateEditor();
         status('Settings changed — Apply & restart to use them.');
       });
-      for (const event of ['click', 'keyup', 'select'])
-        editor.addEventListener(event, updateEditor);
       $('format-config').onclick = () => {
         editor.value = formatConfig(readConfig());
         updateEditor();
       };
-      $('copy-options').onclick = async () => {
+      $('copy-options').onclick = async (event) => {
+        event.stopPropagation();
         let config;
         try {
           config = readConfig();
         } catch {
           return;
         }
-        const options = JSON.stringify(nonDefaultOptions(config), null, 2);
+        const button = $('copy-options');
         try {
-          await navigator.clipboard.writeText(options);
-          status('Copied your changed options to the clipboard.');
+          await navigator.clipboard.writeText(
+            JSON.stringify(nonDefaultOptions(config), null, 2),
+          );
+          button.textContent = 'Copied ✓';
+          button.classList.add('copied');
+          clearTimeout(copyResetTimer);
+          copyResetTimer = setTimeout(() => {
+            button.classList.remove('copied');
+            updateEditor();
+          }, 1500);
         } catch {
-          status('Could not copy. Select the options text and copy it.', true);
+          button.textContent = 'Copy failed — select and copy manually';
         }
       };
       updateEditor();
