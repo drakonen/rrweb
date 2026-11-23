@@ -522,18 +522,17 @@
       <section class="wide">
         <details id="settings">
           <summary>
-            <h2>Recorder settings</h2>
+            <h2>Record options</h2>
+            <a
+              id="options-docs"
+              href="https://rrweb.com/docs/guide#record-options"
+              target="_blank"
+              rel="noopener"
+              >Docs ↗</a
+            >
             <div id="status" role="status" aria-live="polite">Loading…</div>
-            <button id="copy-options" hidden>Copy config</button>
+            <button id="copy-options" hidden>Copy JSON</button>
           </summary>
-        <label for="config">Recorder options (JSON)</label>
-        <a
-          id="options-docs"
-          href="https://rrweb.com/docs/guide#record-options"
-          target="_blank"
-          rel="noopener"
-          >Docs ↗</a
-        >
         <div class="config-editor">
           <div id="editor-gutter"><div id="gutter-controls"></div></div>
           <div id="editor-stack">
@@ -542,6 +541,7 @@
               id="config"
               spellcheck="false"
               wrap="off"
+              aria-label="Record options (JSON)"
               aria-describedby="config-help config-error"
             ></textarea>
             <div id="inline-controls"></div>
@@ -671,6 +671,7 @@
         $('back-to-docs').href = deployment.docsBase + 'events#events';
         $('options-docs').href = deployment.docsBase + 'guide#record-options';
       }
+      $('options-docs').onclick = (event) => event.stopPropagation();
       // Reuse the docs theme preference when available, otherwise follow the OS.
       try {
         const theme = localStorage.getItem('vitepress-theme-appearance');
@@ -1284,7 +1285,7 @@
           typeof value === 'object' &&
           !Object.keys(value).length
         )
-          notes.push('or true / "all" to slim the DOM');
+          notes.push('or set to true / "all"');
         return notes.length ? `  // ${notes.join(' · ')}` : '';
       }
       function formatConfig(config) {
@@ -1685,19 +1686,17 @@
         $('apply').disabled =
           !config || JSON.stringify(config) === appliedConfigJSON;
       }
-      const presetChangesJSON = JSON.stringify(
-        nonDefaultOptions(presentedDefaults()),
-      );
       let copyResetTimer;
       function updateCopyButton(config) {
         const button = $('copy-options');
         if (button.classList.contains('copied')) return;
-        const changes = config ? nonDefaultOptions(config) : {};
-        const count = Object.keys(changes).length;
-        button.hidden = !config || JSON.stringify(changes) === presetChangesJSON;
-        button.textContent = !count
-          ? 'Copy config (all defaults)'
-          : `Copy config (${count} change${count === 1 ? '' : 's'} from default)`;
+        const count = config
+          ? Object.keys(nonDefaultOptions(config)).length
+          : 0;
+        button.hidden = !count;
+        button.textContent = `Copy JSON (${count} change${
+          count === 1 ? '' : 's'
+        } from default)`;
       }
       editor.value = formatConfig(presentedDefaults());
       editor.addEventListener('input', updateEditor);
