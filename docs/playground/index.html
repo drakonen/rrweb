@@ -976,12 +976,14 @@
         let options;
         try {
           options = readConfig();
+          appliedConfigJSON = JSON.stringify(options);
           if (options.ignoreCSSAttributes)
             options.ignoreCSSAttributes = new Set(options.ignoreCSSAttributes);
         } catch (error) {
           status(`Cannot apply settings: ${error.message}`, true);
           return false;
         }
+        updateApplyState();
         if (location.protocol === 'file:') {
           status(
             'Serve the repository over HTTP: python3 -m http.server 8000, then open this page through localhost:8000.',
@@ -1014,11 +1016,14 @@
           const script = doc.createElement('script');
           script.src = new URL(deployment.recorderAsset, location.href).href;
           script.onerror = () => {
-            if (current === generation)
+            if (current === generation) {
               status(
                 'Cannot load the recorder. Reload the page and try again.',
                 true,
               );
+              appliedConfigJSON = null;
+              updateApplyState();
+            }
           };
           script.onload = () => {
             if (current !== generation) return;
@@ -1032,10 +1037,12 @@
                 throw new Error(
                   'Recorder did not start. Check the browser console.',
                 );
-              status('Recording — settings applied.');
+              status('');
             } catch (error) {
               stop();
               status(error.message, true);
+              appliedConfigJSON = null;
+              updateApplyState();
             }
           };
           doc.head.append(script);
@@ -1657,14 +1664,26 @@
           $('config-error').textContent = error.message;
           editor.setAttribute('aria-invalid', 'true');
         }
-        for (const id of ['apply', 'format-config'])
-          $(id).disabled = !config;
+        $('format-config').disabled = !config;
         $('format-config').hidden =
           !config || formatConfig(config) === editor.value;
+        $('apply').disabled =
+          !config || JSON.stringify(config) === appliedConfigJSON;
         updateCopyButton(config);
         const ranges = config ? propertyRanges() : undefined;
         renderGutter(config, ranges);
         renderHighlight(config, ranges);
+      }
+      let appliedConfigJSON = null;
+      function updateApplyState() {
+        let config;
+        try {
+          config = readConfig();
+        } catch {
+          config = null;
+        }
+        $('apply').disabled =
+          !config || JSON.stringify(config) === appliedConfigJSON;
       }
       const presetChangesJSON = JSON.stringify(
         nonDefaultOptions(presentedDefaults()),
@@ -1681,10 +1700,7 @@
           : `Copy config (${count} change${count === 1 ? '' : 's'} from default)`;
       }
       editor.value = formatConfig(presentedDefaults());
-      editor.addEventListener('input', () => {
-        updateEditor();
-        status('Settings changed — Apply & restart to use them.');
-      });
+      editor.addEventListener('input', updateEditor);
       $('format-config').onclick = () => {
         editor.value = formatConfig(readConfig());
         updateEditor();
