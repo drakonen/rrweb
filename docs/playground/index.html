@@ -271,6 +271,33 @@
       #player-host iframe {
         height: 550px;
       }
+      #event-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .filter-chip {
+        padding: 3px 10px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .filter-chip[aria-pressed='true'] {
+        border-color: var(--brand);
+        color: var(--brand);
+        background: var(--selected);
+        font-weight: 600;
+      }
+      .filter-chip .n {
+        margin-left: 4px;
+        opacity: 0.75;
+        font-variant-numeric: tabular-nums;
+      }
+      #always-shown {
+        align-self: center;
+      }
       #event-list {
         height: 470px;
         overflow: auto;
@@ -602,21 +629,13 @@
             aria-controls="raw-panel"
             tabindex="-1"
           >
-            Raw JSON
+            Raw JSON <span id="raw-count"></span>
           </button>
         </div>
         <div id="events-panel" role="tabpanel" aria-labelledby="events-tab">
           <div class="toolbar">
-            <label for="filter">Show</label>
-            <select id="filter">
-              <option value="relevant">
-                Snapshots, mutations &amp; inputs
-              </option>
-              <option value="all">All events</option>
-              <option value="input">Input events</option>
-              <option value="mutation">Mutations</option>
-            </select>
-            <span id="count">0 captured</span>
+            <div id="event-filters" role="group" aria-label="Filter events"></div>
+            <span id="always-shown" class="muted">+ meta &amp; snapshots</span>
           </div>
           <div id="event-list" aria-label="Captured event list"></div>
         </div>
@@ -908,16 +927,66 @@
         $('status').textContent = message;
         $('status').classList.toggle('error', error);
       }
-      function matches(event) {
-        const mode = $('filter').value;
-        const source = event.type === 3 ? event.data.source : -1;
-        return (
-          mode === 'all' ||
-          (mode === 'input' && source === 5) ||
-          (mode === 'mutation' && source === 0) ||
-          (mode === 'relevant' &&
-            (event.type === 2 || source === 0 || source === 5))
+      const filterCategories = [
+        { key: 'mutation', label: 'Mutation' },
+        { key: 'input', label: 'Input' },
+        { key: 'mouse', label: 'Mouse' },
+        { key: 'scroll', label: 'Scroll' },
+        { key: 'other', label: 'Other' },
+      ];
+      const filterState = {
+        mutation: true,
+        input: true,
+        mouse: false,
+        scroll: false,
+        other: true,
+      };
+      function eventCategory(event) {
+        if (event.type !== 3) return null;
+        switch (event.data.source) {
+          case 0:
+            return 'mutation';
+          case 5:
+            return 'input';
+          case 1:
+          case 2:
+            return 'mouse';
+          case 3:
+            return 'scroll';
+          default:
+            return 'other';
+        }
+      }
+      const filterChips = {};
+      for (const { key, label } of filterCategories) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'filter-chip';
+        chip.setAttribute('aria-pressed', String(filterState[key]));
+        chip.innerHTML = `${label} <span class="n">0</span>`;
+        chip.onclick = () => {
+          filterState[key] = !filterState[key];
+          render();
+        };
+        filterChips[key] = chip;
+        $('event-filters').append(chip);
+      }
+      function renderFilters() {
+        const counts = Object.fromEntries(
+          filterCategories.map(({ key }) => [key, 0]),
         );
+        for (const event of events) {
+          const key = eventCategory(event);
+          if (key) counts[key]++;
+        }
+        for (const { key } of filterCategories) {
+          filterChips[key].setAttribute('aria-pressed', String(filterState[key]));
+          filterChips[key].querySelector('.n').textContent = counts[key];
+        }
+      }
+      function matches(event) {
+        const key = eventCategory(event);
+        return key === null || filterState[key];
       }
       function render() {
         renderPending = false;
@@ -929,9 +998,8 @@
         const visible = events
           .map((event, index) => ({ event, index }))
           .filter(({ event }) => matches(event));
-        $(
-          'count',
-        ).textContent = `${events.length} captured · ${visible.length} matching`;
+        renderFilters();
+        $('raw-count').textContent = events.length ? `(${events.length})` : '';
         list.replaceChildren();
         // Keep the rendered list limited to the latest 300 matching events.
         for (const { event, index } of visible.slice(-300)) {
@@ -1068,7 +1136,6 @@
           restart(link.getAttribute('href'));
         };
       }
-      $('filter').onchange = render;
       const editor = $('config');
       // This catalog supplies validation types and field-tools controls.
       // Unknown JSON fields remain intact, so newer recorder options can
@@ -1696,7 +1763,7 @@
         button.hidden = !count;
         button.textContent = `Copy JSON (${count} change${
           count === 1 ? '' : 's'
-        } from default)`;
+        } vs. default)`;
       }
       editor.value = formatConfig(presentedDefaults());
       editor.addEventListener('input', updateEditor);
